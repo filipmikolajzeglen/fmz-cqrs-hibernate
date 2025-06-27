@@ -1,0 +1,4 @@
+@ParametersAreNonnullByDefault
+package com.filipmikolajzeglen.cqrs.hibernate.database;
+
+import javax.annotation.ParametersAreNonnullByDefault;

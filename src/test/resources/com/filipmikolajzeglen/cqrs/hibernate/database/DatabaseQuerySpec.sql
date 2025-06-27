@@ -1,0 +1,18 @@
+INSERT INTO fmzcqrshibernate.dummy_database_entity (id, name, flag, number)
+VALUES (1, 'John', TRUE, 1000),
+       (2, 'Jane', FALSE, 2000),
+       (3, 'John', FALSE, 2500),
+       (4, 'Joanna', FALSE, 1000),
+       (5, 'John', FALSE, 2000),
+       (6, 'John', FALSE, NULL),
+       (7, 'Joanna', FALSE, NULL),
+       (8, 'Joanna', FALSE, NULL),
+       (9, 'Jane', FALSE, NULL),
+       (10, 'Jane', FALSE, 1000),
+       (11, 'Filip', FALSE, 1000),
+       (12, 'Mikolaj', FALSE, 1000),
+       (13, 'Gabriel', FALSE, 1000),
+       (14, 'Andrzej', FALSE, 1000),
+       (15, 'Zbigniew', FALSE, 1000),
+       (16, 'Bogdan', FALSE, 1000),
+       (17, 'Bartek', FALSE, 1000);
