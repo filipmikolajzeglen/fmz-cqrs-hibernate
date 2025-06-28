@@ -67,9 +67,8 @@ public abstract class DatabaseCommand<ENTITY> extends Command<ENTITY>
       @Override
       public ENTITY execute(EntityManager entityManager)
       {
-         ENTITY managed = entityManager.merge(entity);
-         entityManager.remove(managed);
-         return managed;
+         entityManager.remove(entity);
+         return entity;
       }
    }
 
