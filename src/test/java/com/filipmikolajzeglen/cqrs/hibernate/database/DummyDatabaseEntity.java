@@ -8,9 +8,11 @@ import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Getter
+@Setter
 @AllArgsConstructor(staticName = "of")
 @NoArgsConstructor
 @Table(name = "dummy_database_entity", schema = "fmzcqrshibernate")

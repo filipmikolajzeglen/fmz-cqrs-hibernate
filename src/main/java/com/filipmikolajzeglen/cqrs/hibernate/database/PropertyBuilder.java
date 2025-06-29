@@ -98,4 +98,10 @@ public class PropertyBuilder<ENTITY, PROPERTY>
    {
       V get(E entity);
    }
+
+   @FunctionalInterface
+   public interface Setter<E, V> extends FunctionalReference
+   {
+      void set(E entity, V value);
+   }
 }
