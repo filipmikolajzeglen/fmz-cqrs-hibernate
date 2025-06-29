@@ -76,4 +76,35 @@ class DatabaseSuperCommandSpec extends Specification {
       then:
       updated == 0
    }
+
+   def "should update all entities when no where clause is provided"() {
+      given:
+      def command = DatabaseSuperCommand.update(DummyDatabaseEntity)
+            .set(DummyDatabaseEntity::setFlag, false).where()
+
+      when:
+      def updatedCount = command.execute(entityManager)
+      entityManager.flush()
+      entityManager.clear()
+
+      then:
+      updatedCount == 7
+      def all = entityManager.createQuery(
+            "select e from DummyDatabaseEntity e", DummyDatabaseEntity
+      ).resultList
+      all.size() == 7
+      all.every { !it.flag }
+   }
+
+   def "should throw UnsupportedOperationException in applyToEntity for string property setter"() {
+      given:
+      def setter = DatabaseSuperCommand.Setter.from("someProperty", "value")
+
+      when:
+      setter.applyToEntity(new Object())
+
+      then:
+      def e = thrown(UnsupportedOperationException)
+      e.message == "Not supported yet."
+   }
 }
