@@ -13,11 +13,19 @@ import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
-public class DatabaseQuery<ENTITY> extends Query<ENTITY>
+public class DatabaseQuery<ENTITY> extends Query<ENTITY> implements ConstrainingQuery<ENTITY>
 {
    private final Class<ENTITY> entityType;
 
    private final List<Restriction<ENTITY>> restrictions;
+
+   @Override
+   public Predicate[] toRestrictions(CriteriaBuilder cb, Root<ENTITY> root)
+   {
+      return restrictions.stream()
+            .map(r -> r.toPredicate(cb, root))
+            .toArray(Predicate[]::new);
+   }
 
    public static <ENTITY> Builder<ENTITY> builder(Class<ENTITY> entityType)
    {

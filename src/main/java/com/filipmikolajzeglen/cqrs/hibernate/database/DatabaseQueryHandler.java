@@ -54,6 +54,15 @@ public class DatabaseQueryHandler<ENTITY> implements QueryHandler<DatabaseQuery<
       return entityManager.createQuery(countQuery).getSingleResult();
    }
 
+   private CriteriaQuery<Long> buildCountQuery(DatabaseQuery<ENTITY> query, CriteriaBuilder criteriaBuilder)
+   {
+      CriteriaQuery<Long> countQuery = criteriaBuilder.createQuery(Long.class);
+      Root<ENTITY> root = countQuery.from(query.getEntityType());
+      Predicate[] predicates = query.toRestrictions(criteriaBuilder, root);
+      countQuery.select(criteriaBuilder.count(root)).where(predicates);
+      return countQuery;
+   }
+
    private <PAGE> PAGE handleFirst(DatabaseQuery<ENTITY> query, Pagination<ENTITY, PAGE> pagination,
          CriteriaBuilder criteriaBuilder)
    {
@@ -63,17 +72,6 @@ public class DatabaseQueryHandler<ENTITY> implements QueryHandler<DatabaseQuery<
       typedQuery.setMaxResults(1);
       List<ENTITY> results = typedQuery.getResultList();
       return pagination.expand(results);
-   }
-
-   private CriteriaQuery<Long> buildCountQuery(DatabaseQuery<ENTITY> query, CriteriaBuilder criteriaBuilder)
-   {
-      CriteriaQuery<Long> countQuery = criteriaBuilder.createQuery(Long.class);
-      Root<ENTITY> root = countQuery.from(query.getEntityType());
-      List<Predicate> predicates = query.getRestrictions().stream()
-            .map(r -> r.toPredicate(criteriaBuilder, root))
-            .toList();
-      countQuery.select(criteriaBuilder.count(root)).where(predicates.toArray(new Predicate[0]));
-      return countQuery;
    }
 
    @SuppressWarnings({ "unchecked", "DataFlowIssue" })
@@ -101,10 +99,8 @@ public class DatabaseQueryHandler<ENTITY> implements QueryHandler<DatabaseQuery<
    {
       CriteriaQuery<ENTITY> criteriaQuery = criteriaBuilder.createQuery(query.getEntityType());
       Root<ENTITY> root = criteriaQuery.from(query.getEntityType());
-      List<Predicate> predicates = query.getRestrictions().stream()
-            .map(r -> r.toPredicate(criteriaBuilder, root))
-            .toList();
-      criteriaQuery.select(root).where(predicates.toArray(new Predicate[0]));
+      Predicate[] predicates = query.toRestrictions(criteriaBuilder, root);
+      criteriaQuery.select(root).where(predicates);
       return criteriaQuery;
    }
 
