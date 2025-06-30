@@ -159,11 +159,11 @@ class DatabaseQuerySpec extends Specification {
       where:
       page | size | totalCount || expectedIds     | expectedSize | expectedTotalPages
       0    | 2    | 3          || [-1L, -3L]      | 2            | 2
-      1    | 2    | 3          || []              | 0            | 2
+      1    | 2    | 3          || [-5L]           | 1            | 2
       0    | 3    | 3          || [-1L, -3L, -5L] | 3            | 1
       1    | 3    | 3          || []              | 0            | 1
       0    | 1    | 3          || [-1L]           | 1            | 3
-      2    | 1    | 3          || []              | 0            | 3
+      2    | 1    | 3          || [-5L]           | 1            | 3
       3    | 1    | 3          || []              | 0            | 3
    }
 
