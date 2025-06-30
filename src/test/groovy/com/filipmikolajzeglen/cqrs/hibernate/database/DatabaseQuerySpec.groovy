@@ -1,6 +1,6 @@
 package com.filipmikolajzeglen.cqrs.hibernate.database
 
-import com.filipmikolajzeglen.cqrs.common.Pagination
+import com.filipmikolajzeglen.cqrs.core.Pagination
 import jakarta.persistence.EntityManager
 import jakarta.persistence.PersistenceContext
 import org.springframework.boot.test.context.SpringBootTest

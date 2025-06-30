@@ -2,11 +2,11 @@ package com.filipmikolajzeglen.cqrs.hibernate.database;
 
 import java.util.List;
 
-import com.filipmikolajzeglen.cqrs.common.PagedPagination;
-import com.filipmikolajzeglen.cqrs.common.Pagination;
-import com.filipmikolajzeglen.cqrs.common.QueryHandler;
-import com.filipmikolajzeglen.cqrs.common.SliceResult;
-import com.filipmikolajzeglen.cqrs.common.SlicePagination;
+import com.filipmikolajzeglen.cqrs.core.PagedPagination;
+import com.filipmikolajzeglen.cqrs.core.Pagination;
+import com.filipmikolajzeglen.cqrs.core.QueryHandler;
+import com.filipmikolajzeglen.cqrs.core.SliceResult;
+import com.filipmikolajzeglen.cqrs.core.SlicePagination;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;

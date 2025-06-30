@@ -1,6 +1,6 @@
 package com.filipmikolajzeglen.cqrs.hibernate.database;
 
-import com.filipmikolajzeglen.cqrs.common.CommandHandler;
+import com.filipmikolajzeglen.cqrs.core.CommandHandler;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;

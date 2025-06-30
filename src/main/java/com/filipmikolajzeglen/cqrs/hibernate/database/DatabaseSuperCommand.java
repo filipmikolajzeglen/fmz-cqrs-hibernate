@@ -4,8 +4,8 @@ import java.beans.Introspector;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.filipmikolajzeglen.cqrs.common.Command;
-import com.filipmikolajzeglen.cqrs.common.Query;
+import com.filipmikolajzeglen.cqrs.core.Command;
+import com.filipmikolajzeglen.cqrs.core.Query;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaUpdate;

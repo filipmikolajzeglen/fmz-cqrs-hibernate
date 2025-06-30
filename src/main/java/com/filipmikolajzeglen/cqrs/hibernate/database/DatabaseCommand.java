@@ -1,6 +1,6 @@
 package com.filipmikolajzeglen.cqrs.hibernate.database;
 
-import com.filipmikolajzeglen.cqrs.common.Command;
+import com.filipmikolajzeglen.cqrs.core.Command;
 import jakarta.persistence.EntityManager;
 
 public abstract class DatabaseCommand<ENTITY> extends Command<ENTITY>

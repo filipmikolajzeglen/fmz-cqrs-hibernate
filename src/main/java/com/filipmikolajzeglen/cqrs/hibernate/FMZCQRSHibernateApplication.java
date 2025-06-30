@@ -1,6 +1,6 @@
 package com.filipmikolajzeglen.cqrs.hibernate;
 
-import com.filipmikolajzeglen.cqrs.common.DispatcherConfiguration;
+import com.filipmikolajzeglen.cqrs.core.DispatcherConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Import;
