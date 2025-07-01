@@ -1,4 +1,4 @@
 @ParametersAreNonnullByDefault
-package com.filipmikolajzeglen.cqrs.hibernate.database;
+package com.filipmikolajzeglen.cqrs.persistence.database;
 
 import javax.annotation.ParametersAreNonnullByDefault;

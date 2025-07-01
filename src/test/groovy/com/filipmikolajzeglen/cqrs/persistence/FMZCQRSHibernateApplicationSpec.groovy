@@ -1,4 +1,4 @@
-package com.filipmikolajzeglen.cqrs.hibernate
+package com.filipmikolajzeglen.cqrs.persistence
 
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
