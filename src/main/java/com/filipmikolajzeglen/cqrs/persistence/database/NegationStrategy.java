@@ -1,4 +1,4 @@
-package com.filipmikolajzeglen.cqrs.hibernate.database;
+package com.filipmikolajzeglen.cqrs.persistence.database;
 
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Predicate;

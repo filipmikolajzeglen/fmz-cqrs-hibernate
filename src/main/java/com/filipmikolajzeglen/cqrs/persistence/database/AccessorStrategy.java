@@ -1,4 +1,4 @@
-package com.filipmikolajzeglen.cqrs.hibernate.database;
+package com.filipmikolajzeglen.cqrs.persistence.database;
 
 import java.beans.Introspector;
 
