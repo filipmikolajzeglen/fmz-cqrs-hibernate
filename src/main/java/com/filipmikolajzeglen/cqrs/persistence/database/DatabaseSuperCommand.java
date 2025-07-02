@@ -13,15 +13,38 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import org.perfectable.introspection.FunctionalReference;
 
+/**
+ * Represents a super command for batch update operations on entities.
+ *
+ * @param <ENTITY> the entity type
+ */
 public abstract class DatabaseSuperCommand<ENTITY> extends Command<Integer>
 {
+   /**
+    * Executes the super command using the provided {@link EntityManager}.
+    *
+    * @param entityManager the entity manager
+    * @return the number of affected entities
+    */
    public abstract Integer execute(EntityManager entityManager);
 
+   /**
+    * Starts building an update command for the given entity class.
+    *
+    * @param entityClass the entity class
+    * @param <ENTITY>    the entity type
+    * @return an update builder
+    */
    public static <ENTITY> UpdateBuilder<ENTITY> update(Class<ENTITY> entityClass)
    {
       return new UpdateBuilder<>(entityClass);
    }
 
+   /**
+    * Builder for creating update commands.
+    *
+    * @param <ENTITY> the entity type
+    */
    public static class UpdateBuilder<ENTITY>
    {
       private final Class<ENTITY> entityClass;
@@ -33,18 +56,39 @@ public abstract class DatabaseSuperCommand<ENTITY> extends Command<Integer>
          this.entityClass = entityClass;
       }
 
+      /**
+       * Sets a property value using a setter method reference.
+       *
+       * @param setter the setter method reference
+       * @param value  the value to set
+       * @param <VALUE> the value type
+       * @return the update builder
+       */
       public <VALUE> UpdateBuilder<ENTITY> set(PropertyBuilder.Setter<ENTITY, VALUE> setter, VALUE value)
       {
          setters.add(Setter.from(setter, value));
          return this;
       }
 
+      /**
+       * Sets a property value by property name.
+       *
+       * @param property the property name
+       * @param value    the value to set
+       * @return the update builder
+       */
       public UpdateBuilder<ENTITY> set(String property, Object value)
       {
          setters.add(Setter.from(property, value));
          return this;
       }
 
+      /**
+       * Specifies the criteria for selecting entities to update.
+       *
+       * @param query the query defining the criteria
+       * @return the update command
+       */
       public DatabaseSuperCommand<ENTITY> where(Query<ENTITY> query)
       {
          this.query = query;
@@ -52,6 +96,11 @@ public abstract class DatabaseSuperCommand<ENTITY> extends Command<Integer>
       }
    }
 
+   /**
+    * Represents a setter for updating entity properties.
+    *
+    * @param <ENTITY> the entity type
+    */
    public interface Setter<ENTITY>
    {
       void applyToCriteria(CriteriaUpdate<ENTITY> update, Root<ENTITY> root);

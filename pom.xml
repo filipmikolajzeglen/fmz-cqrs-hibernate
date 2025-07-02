@@ -50,7 +50,6 @@
       <groupId>org.perfectable</groupId>
       <artifactId>introspectable</artifactId>
       <version>5.2.0</version>
-      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>jakarta.persistence</groupId>

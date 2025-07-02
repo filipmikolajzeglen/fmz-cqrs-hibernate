@@ -15,11 +15,24 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Handles execution of {@link DatabaseQuery} using an {@link EntityManager} and supports various pagination strategies.
+ *
+ * @param <ENTITY> the entity type
+ */
 @RequiredArgsConstructor
 public class DatabaseQueryHandler<ENTITY> implements QueryHandler<DatabaseQuery<ENTITY>, ENTITY>
 {
    private final EntityManager entityManager;
 
+   /**
+    * Handles the given database query with the specified pagination.
+    *
+    * @param query      the database query
+    * @param pagination the pagination strategy
+    * @param <PAGE>     the result page type
+    * @return the paginated result
+    */
    @Override
    public <PAGE> PAGE handle(DatabaseQuery<ENTITY> query, Pagination<ENTITY, PAGE> pagination)
    {

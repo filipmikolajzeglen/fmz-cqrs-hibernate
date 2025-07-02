@@ -11,6 +11,12 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import org.perfectable.introspection.FunctionalReference;
 
+/**
+ * Builder for adding property-based restrictions to a {@link DatabaseQuery}.
+ *
+ * @param <ENTITY>   the entity type
+ * @param <PROPERTY> the property type
+ */
 public class PropertyBuilder<ENTITY, PROPERTY>
 {
    private final DatabaseQuery.Builder<ENTITY> parent;
@@ -35,11 +41,22 @@ public class PropertyBuilder<ENTITY, PROPERTY>
       this.negationStrategy = negationStrategy;
    }
 
+   /**
+    * Negates the next restriction.
+    *
+    * @return a new property builder with negation applied
+    */
    public PropertyBuilder<ENTITY, PROPERTY> not()
    {
       return new PropertyBuilder<>(parent, accessorStrategy, negationStrategy.negate());
    }
 
+   /**
+    * Adds an equality restriction for the property.
+    *
+    * @param property the value to compare
+    * @return the parent builder
+    */
    public DatabaseQuery.Builder<ENTITY> equalTo(PROPERTY property)
    {
       return addRestriction((criteriaBuilder, root) -> {
@@ -48,6 +65,11 @@ public class PropertyBuilder<ENTITY, PROPERTY>
       });
    }
 
+   /**
+    * Adds a restriction that the property is null.
+    *
+    * @return the parent builder
+    */
    public DatabaseQuery.Builder<ENTITY> isNull()
    {
       return addRestriction((criteriaBuilder, root) -> {
@@ -56,6 +78,11 @@ public class PropertyBuilder<ENTITY, PROPERTY>
       });
    }
 
+   /**
+    * Adds a restriction that the property is not null.
+    *
+    * @return the parent builder
+    */
    public DatabaseQuery.Builder<ENTITY> isNotNull()
    {
       return addRestriction((criteriaBuilder, root) -> {
@@ -64,6 +91,12 @@ public class PropertyBuilder<ENTITY, PROPERTY>
       });
    }
 
+   /**
+    * Adds an "in" restriction for the property.
+    *
+    * @param properties the collection of values
+    * @return the parent builder
+    */
    public DatabaseQuery.Builder<ENTITY> in(Collection<PROPERTY> properties)
    {
       return addRestriction((criteriaBuilder, root) -> {
@@ -94,12 +127,24 @@ public class PropertyBuilder<ENTITY, PROPERTY>
       return parent;
    }
 
+   /**
+    * Functional interface for property getter references.
+    *
+    * @param <E> the entity type
+    * @param <V> the property type
+    */
    @FunctionalInterface
    public interface Getter<E, V> extends FunctionalReference
    {
       V get(E entity);
    }
 
+   /**
+    * Functional interface for property setter references.
+    *
+    * @param <E> the entity type
+    * @param <V> the property type
+    */
    @FunctionalInterface
    public interface Setter<E, V> extends FunctionalReference
    {
