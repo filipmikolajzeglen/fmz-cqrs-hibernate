@@ -4,7 +4,7 @@ import jakarta.persistence.criteria.CriteriaBuilder
 import jakarta.persistence.criteria.Predicate
 import spock.lang.Specification
 
-class NegationStrategySpec extends Specification {
+class PropertyBuilderSpec extends Specification {
 
    def "should apply ForwardStrategy and NegatedStrategy"() {
       given:
@@ -12,8 +12,8 @@ class NegationStrategySpec extends Specification {
       def predicate = Mock(Predicate)
 
       when:
-      def forward = NegationStrategy.ForwardStrategy.INSTANCE
-      def negated = NegationStrategy.NegatedStrategy.INSTANCE
+      def forward = PropertyBuilder.NegationStrategy.ForwardStrategy.INSTANCE
+      def negated = PropertyBuilder.NegationStrategy.NegatedStrategy.INSTANCE
 
       then:
       forward.apply(cb, predicate) == predicate
@@ -22,7 +22,7 @@ class NegationStrategySpec extends Specification {
 
    def "should negate strategies"() {
       expect:
-      NegationStrategy.ForwardStrategy.INSTANCE.negate() == NegationStrategy.NegatedStrategy.INSTANCE
-      NegationStrategy.NegatedStrategy.INSTANCE.negate() == NegationStrategy.ForwardStrategy.INSTANCE
+      PropertyBuilder.NegationStrategy.ForwardStrategy.INSTANCE.negate() == PropertyBuilder.NegationStrategy.NegatedStrategy.INSTANCE
+      PropertyBuilder.NegationStrategy.NegatedStrategy.INSTANCE.negate() == PropertyBuilder.NegationStrategy.ForwardStrategy.INSTANCE
    }
 }

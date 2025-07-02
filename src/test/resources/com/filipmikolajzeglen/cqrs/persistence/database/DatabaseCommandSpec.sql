@@ -1,3 +1,3 @@
-INSERT INTO fmzcqrshibernate.dummy_database_entity (id, name, flag, number)
-VALUES (-1, 'To modify', TRUE, 1000),
-       (-2, 'To remove', FALSE, 2000);
+INSERT INTO fmzcqrspersistence.dummy_database_entity (name, flag, number)
+VALUES ('To modify', TRUE, 1000),
+       ('To remove', FALSE, 2000);

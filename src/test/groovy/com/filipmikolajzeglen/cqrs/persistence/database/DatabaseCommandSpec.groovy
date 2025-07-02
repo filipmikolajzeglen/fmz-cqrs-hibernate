@@ -1,21 +1,15 @@
 package com.filipmikolajzeglen.cqrs.persistence.database
 
-import jakarta.persistence.EntityManager
-import jakarta.persistence.PersistenceContext
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.jdbc.Sql
-import org.springframework.transaction.annotation.Transactional
-import org.testcontainers.spock.Testcontainers
-import spock.lang.Specification
+import com.filipmikolajzeglen.cqrs.persistence.DBSpecification
 
-@Sql
-@Testcontainers
-@Transactional
-@SpringBootTest
-class DatabaseCommandSpec extends Specification {
+class DatabaseCommandSpec extends DBSpecification {
 
-   @PersistenceContext
-   EntityManager entityManager
+   private static final String SQL_INIT_DATA ='/com/filipmikolajzeglen/cqrs/persistence/database/DatabaseCommandSpec.sql'
+
+   @Override
+   protected String sqlInitData() {
+      return getClass().getResource(SQL_INIT_DATA).text
+   }
 
    def "should persist entity using DatabaseCommand.create"() {
       given:
@@ -38,7 +32,9 @@ class DatabaseCommandSpec extends Specification {
    def "should update entity using DatabaseCommand.update"() {
       given:
       def handler = new DatabaseCommandHandler<DummyDatabaseEntity>(entityManager)
-      def entity = entityManager.find(DummyDatabaseEntity, -1L)
+      def entity = entityManager
+            .createQuery("SELECT e FROM DummyDatabaseEntity e WHERE name = 'To modify'", DummyDatabaseEntity)
+            .singleResult
 
       expect:
       entity != null
@@ -69,7 +65,9 @@ class DatabaseCommandSpec extends Specification {
    def "should remove entity using DatabaseCommand.remove"() {
       given:
       def handler = new DatabaseCommandHandler<DummyDatabaseEntity>(entityManager)
-      def entity = entityManager.find(DummyDatabaseEntity, -2L)
+      def entity = entityManager
+            .createQuery("SELECT e FROM DummyDatabaseEntity e WHERE name = 'To remove'", DummyDatabaseEntity)
+            .singleResult
       assert entity != null
 
       when:

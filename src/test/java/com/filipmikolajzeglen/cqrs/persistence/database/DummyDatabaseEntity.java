@@ -15,7 +15,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor(staticName = "of")
 @NoArgsConstructor
-@Table(name = "dummy_database_entity", schema = "fmzcqrshibernate")
+@Table(name = "dummy_database_entity", schema = "fmzcqrspersistence")
 public class DummyDatabaseEntity
 {
    @Id

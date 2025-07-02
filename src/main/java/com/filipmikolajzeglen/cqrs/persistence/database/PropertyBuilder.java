@@ -1,5 +1,6 @@
 package com.filipmikolajzeglen.cqrs.persistence.database;
 
+import java.beans.Introspector;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.function.BiFunction;
@@ -103,5 +104,105 @@ public class PropertyBuilder<ENTITY, PROPERTY>
    public interface Setter<E, V> extends FunctionalReference
    {
       void set(E entity, V value);
+   }
+
+   sealed interface AccessorStrategy<ENTITY>
+   {
+      Path<?> resolve(Root<ENTITY> root);
+
+      static <ENTITY, PROPERTY> AccessorStrategy<ENTITY> byGetter(PropertyBuilder.Getter<ENTITY, PROPERTY> getter)
+      {
+         return new GetterAccessor<>(getter);
+      }
+
+      static <ENTITY> AccessorStrategy<ENTITY> byName(String propertyName)
+      {
+         return new RawAccessor<>(propertyName);
+      }
+
+      final class GetterAccessor<ENTITY, PROPERTY> implements AccessorStrategy<ENTITY>
+      {
+         private final PropertyBuilder.Getter<ENTITY, PROPERTY> getter;
+
+         public GetterAccessor(PropertyBuilder.Getter<ENTITY, PROPERTY> getter)
+         {
+            this.getter = getter;
+         }
+
+         @Override
+         public Path<?> resolve(Root<ENTITY> root)
+         {
+            String propertyName = propertyNameFrom(getter);
+            return root.get(propertyName);
+         }
+
+         private String propertyNameFrom(PropertyBuilder.Getter<ENTITY, PROPERTY> getter)
+         {
+            FunctionalReference.Introspection introspection = getter.introspect();
+            String methodName = introspection.referencedMethod().getName();
+            return Introspector.decapitalize(methodName.replaceFirst("^(get|is)", ""));
+         }
+      }
+
+      final class RawAccessor<ENTITY> implements AccessorStrategy<ENTITY>
+      {
+         private final String path;
+
+         public RawAccessor(String path)
+         {
+            this.path = path;
+         }
+
+         @Override
+         public Path<?> resolve(Root<ENTITY> root)
+         {
+            return root.get(path);
+         }
+      }
+   }
+
+   sealed interface NegationStrategy
+   {
+      NegationStrategy INITIAL = ForwardStrategy.INSTANCE;
+
+      Predicate apply(CriteriaBuilder cb, Predicate predicate);
+
+      NegationStrategy negate();
+
+      final class NegatedStrategy implements NegationStrategy
+      {
+         static final NegationStrategy INSTANCE = new NegatedStrategy();
+
+         @Override
+         public Predicate apply(CriteriaBuilder cb, Predicate predicate)
+         {
+            return cb.not(predicate);
+         }
+
+         @SuppressWarnings("ClassEscapesDefinedScope")
+         @Override
+         public NegationStrategy negate()
+         {
+            return ForwardStrategy.INSTANCE;
+         }
+      }
+
+      final class ForwardStrategy implements NegationStrategy
+      {
+         static final NegationStrategy INSTANCE = new ForwardStrategy();
+
+         @Override
+         public Predicate apply(CriteriaBuilder cb, Predicate predicate)
+         {
+            return predicate;
+         }
+
+         @SuppressWarnings("ClassEscapesDefinedScope")
+         @Override
+         public NegationStrategy negate()
+         {
+            return NegatedStrategy.INSTANCE;
+         }
+      }
    }
 }

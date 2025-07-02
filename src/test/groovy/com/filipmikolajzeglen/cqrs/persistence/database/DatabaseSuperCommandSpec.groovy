@@ -1,21 +1,15 @@
 package com.filipmikolajzeglen.cqrs.persistence.database
 
-import jakarta.persistence.EntityManager
-import jakarta.persistence.PersistenceContext
-import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.jdbc.Sql
-import org.springframework.transaction.annotation.Transactional
-import org.testcontainers.spock.Testcontainers
-import spock.lang.Specification
+import com.filipmikolajzeglen.cqrs.persistence.DBSpecification
 
-@Sql
-@Testcontainers
-@Transactional
-@SpringBootTest
-class DatabaseSuperCommandSpec extends Specification {
+class DatabaseSuperCommandSpec extends DBSpecification {
 
-   @PersistenceContext
-   EntityManager entityManager
+   private static final String SQL_INIT_DATA ='/com/filipmikolajzeglen/cqrs/persistence/database/DatabaseSuperCommandSpec.sql'
+
+   @Override
+   protected String sqlInitData() {
+      return getClass().getResource(SQL_INIT_DATA).text
+   }
 
    def "should update multiple entities using DatabaseSuperCommand.update"() {
       when:

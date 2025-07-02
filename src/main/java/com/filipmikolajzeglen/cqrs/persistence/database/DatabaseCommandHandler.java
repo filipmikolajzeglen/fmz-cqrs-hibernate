@@ -2,13 +2,11 @@ package com.filipmikolajzeglen.cqrs.persistence.database;
 
 import com.filipmikolajzeglen.cqrs.core.CommandHandler;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public class DatabaseCommandHandler<ENTITY> implements CommandHandler<DatabaseCommand<ENTITY>, ENTITY>
 {
-   @PersistenceContext
    private final EntityManager entityManager;
 
    @Override
