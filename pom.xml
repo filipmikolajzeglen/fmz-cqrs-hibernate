@@ -10,7 +10,7 @@
 
   <groupId>com.filipmikolajzeglen.cqrs</groupId>
   <artifactId>fmz-cqrs-persistence</artifactId>
-  <version>1.1.0</version>
+  <version>1.1.1-SNAPSHOT</version>
 
   <name>FMZ - CQRS - Persistence</name>
 
