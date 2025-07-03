@@ -402,6 +402,96 @@ class DatabaseQuerySpec extends DBSpecification {
       result == null
    }
 
+   def "should sort results ascending and descending by property using Pagination.all()"() {
+      given:
+      def query = DatabaseQuery.builder(DummyDatabaseEntity)
+            .property(DummyDatabaseEntity::getName).equalTo('John')
+            .property(DummyDatabaseEntity::getId).in([1L, 3L, 5L])
+            .build()
+
+      when: "sort ascending"
+      def ascResult = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
+            .handle(query, Pagination.<DummyDatabaseEntity>all().orderedByAsc("number"))
+
+      then:
+      ascResult*.id == [1L, 5L, 3L] // 1000, 2000, 2500
+
+      when: "sort descending"
+      def descResult = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
+            .handle(query, Pagination.<DummyDatabaseEntity>all().orderedByDesc("number"))
+
+      then:
+      descResult*.id == [3L, 5L, 1L] // 2500, 2000, 1000
+   }
+
+   def "should sort paged results by property"() {
+      given:
+      def query = DatabaseQuery.builder(DummyDatabaseEntity)
+            .property(DummyDatabaseEntity::getName).equalTo('John')
+            .property(DummyDatabaseEntity::getId).in([1L, 3L, 5L])
+            .build()
+
+      when: "paged, ascending"
+      def pagedAsc = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
+            .handle(query, Pagination.<DummyDatabaseEntity>paged(0, 2, 3).orderedByAsc("number"))
+
+      then:
+      pagedAsc.content*.id == [1L, 5L] // 1000, 2000
+
+      when: "paged, descending"
+      def pagedDesc = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
+            .handle(query, Pagination.<DummyDatabaseEntity>paged(0, 2, 3).orderedByDesc("number"))
+
+      then:
+      pagedDesc.content*.id == [3L, 5L] // 2500, 2000
+   }
+
+   def "should sort first result by property"() {
+      given:
+      def query = DatabaseQuery.builder(DummyDatabaseEntity)
+            .property(DummyDatabaseEntity::getName).equalTo('John')
+            .property(DummyDatabaseEntity::getId).in([1L, 3L, 5L])
+            .build()
+
+      when: "first ascending"
+      def firstAsc = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
+            .handle(query, Pagination.<DummyDatabaseEntity>first().orderedByAsc("number"))
+
+      then:
+      firstAsc.isPresent()
+      firstAsc.get().id == 1L // 1000
+
+      when: "first descending"
+      def firstDesc = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
+            .handle(query, Pagination.<DummyDatabaseEntity>first().orderedByDesc("number"))
+
+      then:
+      firstDesc.isPresent()
+      firstDesc.get().id == 3L // 2500
+   }
+
+   def "should sort sliced results by property"() {
+      given:
+      def query = DatabaseQuery.builder(DummyDatabaseEntity)
+            .property(DummyDatabaseEntity::getName).equalTo('John')
+            .property(DummyDatabaseEntity::getId).in([1L, 3L, 5L])
+            .build()
+
+      when: "sliced ascending"
+      def slicedAsc = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
+            .handle(query, Pagination.<DummyDatabaseEntity>sliced(0, 2).orderedByAsc("number"))
+
+      then:
+      slicedAsc.content*.id == [1L, 5L] // 1000, 2000
+
+      when: "sliced descending"
+      def slicedDesc = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
+            .handle(query, Pagination.<DummyDatabaseEntity>sliced(0, 2).orderedByDesc("number"))
+
+      then:
+      slicedDesc.content*.id == [3L, 5L] // 2500, 2000
+   }
+
    private static class CustomPagination implements Pagination<DummyDatabaseEntity, List<DummyDatabaseEntity>> {
       private final int offset
       private final int limit

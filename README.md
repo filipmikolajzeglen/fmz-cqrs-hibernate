@@ -19,7 +19,7 @@ Add the dependency to your `pom.xml`:
 <dependency>
   <groupId>com.filipmikolajzeglen.cqrs</groupId>
   <artifactId>fmz-cqrs-persistence</artifactId>
-  <version>1.1.0</version>
+  <version>1.2.0</version>
 </dependency>
 ```
 
@@ -167,6 +167,57 @@ Here, `optionalName` is of type `Optional<String>` and `optionalIds` is of type 
 
 - **Not for general use:** This pattern should not be used for regular business logic, DTOs, or method signatures outside of query construction.
 - **Exception to the rule:** Treat this as a pragmatic exception, justified only by the need for expressive and concise query building. Do not generalize this approach to other parts of your codebase.
+
+## Sorting Support in Pagination
+
+Some pagination strategies support sorting of results. These implement the `SortablePagination` interface, which allows you to specify the order of returned elements by one or more properties.
+
+> **Note:** If you do not provide your own sorting to `DatabaseQuery`, results will be sorted by the `"id"` column in ascending order by default.
+
+### Supported Pagination Types
+
+Sorting is available for the following pagination types:
+- `Pagination.all()` (`ListPagination`)
+- `Pagination.first()` (`FirstPagination`)
+- `Pagination.paged(...)` (`PagedPagination`)
+- `Pagination.sliced(...)` (`SlicePagination`)
+
+### Defining Sorting
+
+To specify sorting, use the `orderedByAsc(property)` or `orderedByDesc(property)` methods on the pagination instance. You can chain multiple calls to set sorting by several fields (in priority order).
+
+#### Example usage:
+
+```java
+// Sort ascending by the "name" field
+List<MyEntity> entities = handler.handle(
+    query,
+    Pagination.all().orderedByAsc("name")
+);
+
+// Sort descending by "createdAt", then ascending by "name"
+PagedResult<MyEntity> page = handler.handle(
+    query,
+    Pagination.paged(0, 10, totalCount)
+        .orderedByDesc("createdAt")
+        .orderedByAsc("name")
+);
+```
+
+### Retrieving Sorting Information
+
+You can retrieve the list of declared sort orders using the `getSorts()` method:
+
+```java
+SortablePagination<MyEntity, ?> pagination = Pagination.all()
+    .orderedByAsc("name")
+    .orderedByDesc("createdAt");
+
+List<Sort> sorts = pagination.getSorts();
+for (Sort sort : sorts) {
+    System.out.println(sort.getProperty() + " " + sort.getDirection());
+}
+```
 
 ## Integration
 
