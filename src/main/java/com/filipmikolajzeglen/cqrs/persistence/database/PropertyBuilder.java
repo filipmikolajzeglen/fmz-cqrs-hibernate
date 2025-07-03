@@ -3,6 +3,7 @@ package com.filipmikolajzeglen.cqrs.persistence.database;
 import java.beans.Introspector;
 import java.util.Collection;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.BiFunction;
 
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -22,23 +23,37 @@ public class PropertyBuilder<ENTITY, PROPERTY>
    private final DatabaseQuery.Builder<ENTITY> parent;
    private final AccessorStrategy<ENTITY> accessorStrategy;
    private final NegationStrategy negationStrategy;
+   private final OptionalityStrategy optionality;
 
+   /**
+    * Creates a property builder for a given property accessor.
+    *
+    * @param parent   the parent query builder
+    * @param accessor the property accessor
+    */
    public PropertyBuilder(DatabaseQuery.Builder<ENTITY> parent, Getter<ENTITY, PROPERTY> accessor)
    {
-      this(parent, AccessorStrategy.byGetter(accessor), NegationStrategy.INITIAL);
+      this(parent, AccessorStrategy.byGetter(accessor), NegationStrategy.INITIAL, OptionalityStrategy.ALWAYS);
    }
 
+   /**
+    * Creates a property builder for a given property name.
+    *
+    * @param parent      the parent query builder
+    * @param rawAccessor the property name
+    */
    public PropertyBuilder(DatabaseQuery.Builder<ENTITY> parent, String rawAccessor)
    {
-      this(parent, AccessorStrategy.byName(rawAccessor), NegationStrategy.INITIAL);
+      this(parent, AccessorStrategy.byName(rawAccessor), NegationStrategy.INITIAL, OptionalityStrategy.ALWAYS);
    }
 
    private PropertyBuilder(DatabaseQuery.Builder<ENTITY> parent,
-         AccessorStrategy<ENTITY> accessorStrategy, NegationStrategy negationStrategy)
+         AccessorStrategy<ENTITY> accessorStrategy, NegationStrategy negationStrategy, OptionalityStrategy optionality)
    {
       this.parent = parent;
       this.accessorStrategy = accessorStrategy;
       this.negationStrategy = negationStrategy;
+      this.optionality = optionality;
    }
 
    /**
@@ -48,7 +63,17 @@ public class PropertyBuilder<ENTITY, PROPERTY>
     */
    public PropertyBuilder<ENTITY, PROPERTY> not()
    {
-      return new PropertyBuilder<>(parent, accessorStrategy, negationStrategy.negate());
+      return new PropertyBuilder<>(parent, accessorStrategy, negationStrategy.negate(), optionality);
+   }
+
+   /**
+    * Enables optional restriction: restriction will be added only if the value is not null.
+    *
+    * @return a new property builder with an optionally flag set
+    */
+   public PropertyBuilder<ENTITY, PROPERTY> optionally()
+   {
+      return new PropertyBuilder<>(parent, accessorStrategy, negationStrategy, OptionalityStrategy.OPTIONAL);
    }
 
    /**
@@ -59,9 +84,32 @@ public class PropertyBuilder<ENTITY, PROPERTY>
     */
    public DatabaseQuery.Builder<ENTITY> equalTo(PROPERTY property)
    {
+      if (!optionality.shouldApply(property))
+      {
+         return parent;
+      }
       return addRestriction((criteriaBuilder, root) -> {
          Path<?> path = accessorStrategy.resolve(root);
          return criteriaBuilder.equal(path, property);
+      });
+   }
+
+   /**
+    * Adds an equality restriction for the property using Optional.
+    *
+    * @param propertyOpt the optional value to compare
+    * @return the parent builder
+    */
+   @SuppressWarnings({ "OptionalUsedAsFieldOrParameterType" })
+   public DatabaseQuery.Builder<ENTITY> equalTo(Optional<PROPERTY> propertyOpt)
+   {
+      if (!optionality.shouldApply(propertyOpt) || propertyOpt.isEmpty())
+      {
+         return parent;
+      }
+      return addRestriction((criteriaBuilder, root) -> {
+         Path<?> path = accessorStrategy.resolve(root);
+         return criteriaBuilder.equal(path, propertyOpt.get());
       });
    }
 
@@ -99,6 +147,43 @@ public class PropertyBuilder<ENTITY, PROPERTY>
     */
    public DatabaseQuery.Builder<ENTITY> in(Collection<PROPERTY> properties)
    {
+      if (!optionality.shouldApply(properties) || properties.isEmpty())
+      {
+         return parent;
+      }
+      return getEntityBuilder(properties);
+   }
+
+   /**
+    * Adds an "in" restriction for the property using Optional. Restriction will be added only if the Optional is
+    * present and the collection is not empty.
+    *
+    * @param propertiesOpt the optional collection of values
+    * @return the parent builder
+    */
+   @SuppressWarnings({ "OptionalUsedAsFieldOrParameterType" })
+   public DatabaseQuery.Builder<ENTITY> in(Optional<Collection<PROPERTY>> propertiesOpt)
+   {
+      if (!optionality.shouldApply(propertiesOpt) || propertiesOpt.isEmpty())
+      {
+         return parent;
+      }
+      Collection<PROPERTY> properties = propertiesOpt.get();
+      if (properties.isEmpty())
+      {
+         return parent;
+      }
+      return getEntityBuilder(properties);
+   }
+
+   /**
+    * Adds a restriction using a custom predicate for the given collection of properties.
+    *
+    * @param properties the collection of property values
+    * @return the parent builder
+    */
+   private DatabaseQuery.Builder<ENTITY> getEntityBuilder(Collection<PROPERTY> properties)
+   {
       return addRestriction((criteriaBuilder, root) -> {
          Path<?> path = accessorStrategy.resolve(root);
          Collection<PROPERTY> filtered = properties.stream()
@@ -116,6 +201,12 @@ public class PropertyBuilder<ENTITY, PROPERTY>
       });
    }
 
+   /**
+    * Adds a restriction using the provided predicate function.
+    *
+    * @param predicateFn the function to create a predicate
+    * @return the parent builder
+    */
    private DatabaseQuery.Builder<ENTITY> addRestriction(
          BiFunction<CriteriaBuilder, Root<ENTITY>, Predicate> predicateFn)
    {
@@ -151,8 +242,29 @@ public class PropertyBuilder<ENTITY, PROPERTY>
       void set(E entity, V value);
    }
 
+   /**
+    * Functional interface for restriction with value.
+    *
+    * @param <ENTITY> the entity type
+    * @param <T>      the value type
+    */
+   @FunctionalInterface
+   private interface RestrictionFunction<ENTITY, T>
+   {
+      Predicate apply(CriteriaBuilder cb, Root<ENTITY> root, T value);
+   }
+
+   /**
+    * Strategy for resolving property access.
+    */
    sealed interface AccessorStrategy<ENTITY>
    {
+      /**
+       * Resolves the property path from the root entity.
+       *
+       * @param root the root entity
+       * @return the property path
+       */
       Path<?> resolve(Root<ENTITY> root);
 
       static <ENTITY, PROPERTY> AccessorStrategy<ENTITY> byGetter(PropertyBuilder.Getter<ENTITY, PROPERTY> getter)
@@ -206,12 +318,27 @@ public class PropertyBuilder<ENTITY, PROPERTY>
       }
    }
 
+   /**
+    * Strategy for negating restrictions.
+    */
    sealed interface NegationStrategy
    {
       NegationStrategy INITIAL = ForwardStrategy.INSTANCE;
 
+      /**
+       * Applies negation to the given predicate if needed.
+       *
+       * @param cb        the criteria builder
+       * @param predicate the predicate to possibly negate
+       * @return the (possibly negated) predicate
+       */
       Predicate apply(CriteriaBuilder cb, Predicate predicate);
 
+      /**
+       * Returns the opposite negation strategy.
+       *
+       * @return the negated or non-negated strategy
+       */
       NegationStrategy negate();
 
       final class NegatedStrategy implements NegationStrategy
@@ -250,4 +377,42 @@ public class PropertyBuilder<ENTITY, PROPERTY>
          }
       }
    }
+
+   /**
+    * Strategy for handling optional restrictions.
+    */
+   sealed interface OptionalityStrategy
+   {
+      /**
+       * Determines if the restriction should be applied for the given value.
+       *
+       * @param value the value to check (maybe Optional or direct value)
+       * @return true if restriction should be applied, false otherwise
+       */
+      @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+      boolean shouldApply(Object value);
+
+      OptionalityStrategy ALWAYS = new AlwaysStrategy();
+
+      OptionalityStrategy OPTIONAL = new OptionalStrategy();
+
+      final class AlwaysStrategy implements OptionalityStrategy
+      {
+         @Override
+         public boolean shouldApply(Object value)
+         {
+            return true;
+         }
+      }
+
+      final class OptionalStrategy implements OptionalityStrategy
+      {
+         @Override
+         public boolean shouldApply(Object value)
+         {
+            return value instanceof Optional<?> opt && opt.isPresent();
+         }
+      }
+   }
 }
+

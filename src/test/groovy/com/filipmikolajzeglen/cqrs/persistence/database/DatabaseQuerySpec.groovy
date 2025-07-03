@@ -6,7 +6,7 @@ import com.filipmikolajzeglen.cqrs.persistence.DBSpecification
 
 class DatabaseQuerySpec extends DBSpecification {
 
-   private static final String SQL_INIT_DATA ='/com/filipmikolajzeglen/cqrs/persistence/database/DatabaseQuerySpec.sql'
+   private static final String SQL_INIT_DATA = '/com/filipmikolajzeglen/cqrs/persistence/database/DatabaseQuerySpec.sql'
 
    @Override
    protected String sqlInitData() {
@@ -297,6 +297,108 @@ class DatabaseQuerySpec extends DBSpecification {
 
       then:
       result == null
+   }
+
+   def "should not add restriction for null or empty values with optionally()"() {
+      given:
+      def query = DatabaseQuery.builder(DummyDatabaseEntity)
+            .property(DummyDatabaseEntity::getName).optionally().equalTo(null)
+            .property(DummyDatabaseEntity::getId).optionally().in([])
+            .build()
+
+      when:
+      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
+            .handle(query, Pagination.all())
+
+      then: "No restriction is added, so all entities are returned"
+      result.size() == 17
+   }
+
+   def "should not add restrictions if values are not Optional but optionally() method is on"() {
+      given:
+      def query = DatabaseQuery.builder(DummyDatabaseEntity)
+            .property(DummyDatabaseEntity::getName).optionally().equalTo('John')
+            .property(DummyDatabaseEntity::getId).optionally().in([1L, 3L, 5L])
+            .build()
+
+      when:
+      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
+            .handle(query, Pagination.all())
+
+      then: "No restriction is added, so all entities are returned"
+      result.size() == 17
+   }
+
+   def "should work with Optional in equalTo and in"() {
+      given:
+      def query = DatabaseQuery.builder(DummyDatabaseEntity)
+            .property(DummyDatabaseEntity::getName).equalTo(Optional.of('John'))
+            .property(DummyDatabaseEntity::getId).in(Optional.of([1L, 3L, 5L]))
+            .build()
+
+      when:
+      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
+            .handle(query, Pagination.all())
+
+      then:
+      result*.id.sort() == [1L, 3L, 5L]
+   }
+
+   def "should skip restriction if Optional is empty in equalTo and in"() {
+      given:
+      def query = DatabaseQuery.builder(DummyDatabaseEntity)
+            .property(DummyDatabaseEntity::getName).equalTo(Optional.empty())
+            .property(DummyDatabaseEntity::getId).in(Optional.empty())
+            .build()
+
+      when:
+      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
+            .handle(query, Pagination.all())
+
+      then: "No restriction is added, so all entities are returned"
+      result.size() == 17
+   }
+
+   def "should not add restriction for empty collection in in()"() {
+      given:
+      def query = DatabaseQuery.builder(DummyDatabaseEntity)
+            .property(DummyDatabaseEntity::getId).in([])
+            .build()
+
+      when:
+      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
+            .handle(query, Pagination.all())
+
+      then: "No restriction is added, so all entities are returned"
+      result.size() == 17
+   }
+
+   def "should not add restriction for Optional.empty() in in()"() {
+      given:
+      def query = DatabaseQuery.builder(DummyDatabaseEntity)
+            .property(DummyDatabaseEntity::getId).in(Optional.empty())
+            .build()
+
+      when:
+      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
+            .handle(query, Pagination.all())
+
+      then: "No restriction is added, so all entities are returned"
+      result.size() == 17
+   }
+
+   def "should not add restriction for present Optional with empty collection in in()"() {
+      given:
+      def query = DatabaseQuery.builder(DummyDatabaseEntity)
+            .property(DummyDatabaseEntity::getId).in(Optional.of([]))
+            .build()
+
+      when:
+      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
+            .handle(query, Pagination.all())
+
+      then: "No restriction is added, so all entities are returned"
+      result.size() == 17
    }
 
    private static class CustomPagination implements Pagination<DummyDatabaseEntity, List<DummyDatabaseEntity>> {

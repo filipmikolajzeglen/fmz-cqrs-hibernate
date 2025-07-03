@@ -19,7 +19,7 @@ Add the dependency to your `pom.xml`:
 <dependency>
   <groupId>com.filipmikolajzeglen.cqrs</groupId>
   <artifactId>fmz-cqrs-persistence</artifactId>
-  <version>1.0.0</version>
+  <version>1.1.0</version>
 </dependency>
 ```
 
@@ -127,6 +127,46 @@ DatabaseSuperCommand<MyEntity> superCommand = DatabaseSuperCommand
 
 superCommand.execute(entityManager);
 ```
+
+## Controversial Usage
+
+### Using `optionally()` with Query Restrictions
+
+In general, the use of `Optional` as a method parameter or field is discouraged in Java, as it can lead to unclear APIs and misuse. However, in the context of query building, there are cases where it is justified and even beneficial.
+
+#### Example
+
+Optional fields that are meant to be used with `optionally()` should be declared as follows:
+
+```java
+// These fields are intended to be used as optional query parameters
+private Optional<String> optionalName = Optional.empty();
+private Optional<Collection<Long>> optionalIds = Optional.empty();
+```
+
+This way, you can safely assign values to these fields only when the restriction should be applied, and leave them empty otherwise.
+
+Suppose you want to build a query where some restrictions should only be applied if the value is present (e.g., provided by the user). You can use the `optionally()` modifier to express this intent:
+
+```java
+DatabaseQuery<MyEntity> query = DatabaseQuery.<MyEntity>builder(MyEntity.class)
+    .property(MyEntity::getName).optionally().equalTo(optionalName)
+    .property(MyEntity::getId).optionally().in(optionalIds)
+    .build();
+```
+
+Here, `optionalName` is of type `Optional<String>` and `optionalIds` is of type `Optional<Collection<Long>>`. If the optionals are empty, the corresponding restrictions are not added to the query.
+
+#### Why is this justified?
+
+- **Declarative intent:** The use of `optionally()` makes it explicit that the restriction should only be applied if the value is present.
+- **Avoids boilerplate:** Without this, you would need to write imperative code to conditionally add restrictions, making the query builder less fluent and more error-prone.
+- **Query semantics:** In query construction, the presence or absence of a restriction is a first-class concern, and `Optional` is a natural fit for this use case.
+
+#### Why is this an exception?
+
+- **Not for general use:** This pattern should not be used for regular business logic, DTOs, or method signatures outside of query construction.
+- **Exception to the rule:** Treat this as a pragmatic exception, justified only by the need for expressive and concise query building. Do not generalize this approach to other parts of your codebase.
 
 ## Integration
 
