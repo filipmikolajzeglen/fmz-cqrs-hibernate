@@ -2,11 +2,11 @@ package com.filipmikolajzeglen.cqrs.persistence.database;
 
 import java.util.List;
 
-import com.filipmikolajzeglen.cqrs.core.PagedPagination;
 import com.filipmikolajzeglen.cqrs.core.Pagination;
+import com.filipmikolajzeglen.cqrs.core.PaginationVisitor;
+import com.filipmikolajzeglen.cqrs.core.PagedResult;
 import com.filipmikolajzeglen.cqrs.core.QueryHandler;
 import com.filipmikolajzeglen.cqrs.core.SliceResult;
-import com.filipmikolajzeglen.cqrs.core.SlicePagination;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -16,7 +16,8 @@ import jakarta.persistence.criteria.Root;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Handles execution of {@link DatabaseQuery} using an {@link EntityManager} and supports various pagination strategies.
+ * Handles execution of {@link DatabaseQuery} using an {@link EntityManager} and supports various pagination
+ * strategies.
  *
  * @param <ENTITY> the entity type
  */
@@ -37,20 +38,7 @@ public class DatabaseQueryHandler<ENTITY> implements QueryHandler<DatabaseQuery<
    public <PAGE> PAGE handle(DatabaseQuery<ENTITY> query, Pagination<ENTITY, PAGE> pagination)
    {
       CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-      return resolveStrategy(pagination).handle(this, query, pagination, criteriaBuilder);
-   }
-
-   private static <ENTITY, PAGE> PaginationStrategy<ENTITY, PAGE> resolveStrategy(Pagination<ENTITY, PAGE> pagination)
-   {
-      return switch (pagination.getType())
-      {
-         case EXIST -> PaginationStrategy.exist();
-         case COUNT -> PaginationStrategy.count();
-         case FIRST -> PaginationStrategy.first();
-         case PAGED -> PaginationStrategy.paged();
-         case SLICED -> PaginationStrategy.sliced();
-         default -> PaginationStrategy.defaultStrategy();
-      };
+      return pagination.accept(new JpaPaginationVisitor<>(this, query, criteriaBuilder), null);
    }
 
    private Boolean handleExist(DatabaseQuery<ENTITY> query, CriteriaBuilder criteriaBuilder)
@@ -86,17 +74,19 @@ public class DatabaseQueryHandler<ENTITY> implements QueryHandler<DatabaseQuery<
       return pagination.expand(results);
    }
 
-   @SuppressWarnings("unchecked")
-   private <PAGE> PAGE handlePaged(DatabaseQuery<ENTITY> query, Pagination<ENTITY, PAGE> pagination, CriteriaBuilder cb)
+   private PagedResult<ENTITY> handlePaged(DatabaseQuery<ENTITY> query,
+         Pagination<ENTITY, PagedResult<ENTITY>> pagination, CriteriaBuilder cb)
    {
       CriteriaQuery<ENTITY> criteriaQuery = buildCriteriaQuery(query, cb);
       TypedQuery<ENTITY> typedQuery = entityManager.createQuery(criteriaQuery);
+      int page = pagination.getPage();
+      int size = pagination.getSize();
+      typedQuery.setFirstResult(page * size);
+      typedQuery.setMaxResults(size);
       List<ENTITY> results = typedQuery.getResultList();
       long totalCount = countTotal(query, cb);
-      PagedPagination<?> paged = (PagedPagination<?>) pagination;
-      Pagination<ENTITY, PAGE> newPagination = (Pagination<ENTITY, PAGE>) new PagedPagination<>(
-            paged.getPage(), paged.getSize(), (int) totalCount);
-      return newPagination.expand(results);
+      int totalPages = size == 0 ? 0 : (int) Math.ceil((double) totalCount / size);
+      return new PagedResult<>(results, page, size, (int) totalCount, totalPages);
    }
 
    private long countTotal(DatabaseQuery<ENTITY> query, CriteriaBuilder criteriaBuilder)
@@ -105,8 +95,8 @@ public class DatabaseQueryHandler<ENTITY> implements QueryHandler<DatabaseQuery<
       return entityManager.createQuery(countQuery).getSingleResult();
    }
 
-   @SuppressWarnings("unchecked")
-   private <PAGE> PAGE handleSlice(DatabaseQuery<ENTITY> query, Pagination<ENTITY, PAGE> pagination, CriteriaBuilder cb)
+   private SliceResult<ENTITY> handleSlice(DatabaseQuery<ENTITY> query,
+         Pagination<ENTITY, SliceResult<ENTITY>> pagination, CriteriaBuilder cb)
    {
       CriteriaQuery<ENTITY> criteriaQuery = buildCriteriaQuery(query, cb);
       TypedQuery<ENTITY> typedQuery = entityManager.createQuery(criteriaQuery);
@@ -115,11 +105,9 @@ public class DatabaseQueryHandler<ENTITY> implements QueryHandler<DatabaseQuery<
       typedQuery.setFirstResult(offset);
       typedQuery.setMaxResults(limit + 1);
       List<ENTITY> results = typedQuery.getResultList();
-      SlicePagination<?> slice = (SlicePagination<?>) pagination;
-      int realLimit = slice.getLimit();
-      boolean hasNext = results.size() > realLimit;
-      List<ENTITY> content = hasNext ? results.subList(0, realLimit) : results;
-      return (PAGE) new SliceResult<>(content, slice.getOffset(), realLimit, hasNext);
+      boolean hasNext = results.size() > limit;
+      List<ENTITY> content = hasNext ? results.subList(0, limit) : results;
+      return new SliceResult<>(content, offset, limit, hasNext);
    }
 
    private <PAGE> PAGE handleDefault(DatabaseQuery<ENTITY> query, Pagination<ENTITY, PAGE> pagination,
@@ -133,12 +121,11 @@ public class DatabaseQueryHandler<ENTITY> implements QueryHandler<DatabaseQuery<
          int offset = pagination.getOffset();
          int limit = pagination.getLimit();
          typedQuery.setFirstResult(offset);
-         typedQuery.setMaxResults(limit + 1);
+         typedQuery.setMaxResults(limit);
       }
       catch (UnsupportedOperationException ignored)
       {
          // If pagination does not support offset and limit, we do not set them.
-         // This is useful for cases where pagination is not based on offsets, like slicing or counting.
       }
 
       List<ENTITY> results = typedQuery.getResultList();
@@ -154,147 +141,76 @@ public class DatabaseQueryHandler<ENTITY> implements QueryHandler<DatabaseQuery<
       return criteriaQuery;
    }
 
-   private sealed interface PaginationStrategy<ENTITY, PAGE>
+   private static class JpaPaginationVisitor<ENTITY, PAGE> implements PaginationVisitor<ENTITY, PAGE, PAGE>
    {
-      PAGE handle(DatabaseQueryHandler<ENTITY> handler, DatabaseQuery<ENTITY> query,
-            Pagination<ENTITY, PAGE> pagination, CriteriaBuilder cb);
+      private final DatabaseQueryHandler<ENTITY> handler;
+      private final DatabaseQuery<ENTITY> query;
+      private final CriteriaBuilder criteriaBuilder;
 
-      static <ENTITY, PAGE> PaginationStrategy<ENTITY, PAGE> exist()
+      JpaPaginationVisitor(DatabaseQueryHandler<ENTITY> handler, DatabaseQuery<ENTITY> query,
+            CriteriaBuilder criteriaBuilder)
       {
-         return ExistStrategy.instance();
+         this.handler = handler;
+         this.query = query;
+         this.criteriaBuilder = criteriaBuilder;
       }
 
-      static <ENTITY, PAGE> PaginationStrategy<ENTITY, PAGE> count()
+      @Override
+      public PAGE visitSingle(Pagination<ENTITY, PAGE> pagination, PAGE page)
       {
-         return CountStrategy.instance();
+         return handler.handleDefault(query, pagination, criteriaBuilder);
       }
 
-      static <ENTITY, PAGE> PaginationStrategy<ENTITY, PAGE> first()
+      @Override
+      public PAGE visitOptional(Pagination<ENTITY, PAGE> pagination, PAGE page)
       {
-         return FirstStrategy.instance();
+         return handler.handleDefault(query, pagination, criteriaBuilder);
       }
 
-      static <ENTITY, PAGE> PaginationStrategy<ENTITY, PAGE> paged()
+      @Override
+      public PAGE visitList(Pagination<ENTITY, PAGE> pagination, PAGE page)
       {
-         return PagedStrategy.instance();
+         return handler.handleDefault(query, pagination, criteriaBuilder);
       }
 
-      static <ENTITY, PAGE> PaginationStrategy<ENTITY, PAGE> sliced()
+      @Override
+      public PAGE visitExist(Pagination<ENTITY, PAGE> pagination, PAGE page)
       {
-         return SlicedStrategy.instance();
-      }
-
-      static <ENTITY, PAGE> PaginationStrategy<ENTITY, PAGE> defaultStrategy()
-      {
-         return DefaultStrategy.instance();
-      }
-
-      @SuppressWarnings("unchecked")
-      final class ExistStrategy<ENTITY, PAGE> implements PaginationStrategy<ENTITY, PAGE>
-      {
-         private static final ExistStrategy<?, ?> INSTANCE = new ExistStrategy<>();
-
-         static <E, P> ExistStrategy<E, P> instance()
-         {
-            return (ExistStrategy<E, P>) INSTANCE;
-         }
-
-         @Override
-         public PAGE handle(DatabaseQueryHandler<ENTITY> handler, DatabaseQuery<ENTITY> query,
-               Pagination<ENTITY, PAGE> pagination, CriteriaBuilder cb)
-         {
-            return (PAGE) handler.handleExist(query, cb);
-         }
-      }
-
-      @SuppressWarnings("unchecked")
-      final class CountStrategy<ENTITY, PAGE> implements PaginationStrategy<ENTITY, PAGE>
-      {
-         private static final CountStrategy<?, ?> INSTANCE = new CountStrategy<>();
-
-         static <E, P> CountStrategy<E, P> instance()
-         {
-            return (CountStrategy<E, P>) INSTANCE;
-         }
-
-         @Override
-         public PAGE handle(DatabaseQueryHandler<ENTITY> handler, DatabaseQuery<ENTITY> query,
-               Pagination<ENTITY, PAGE> pagination, CriteriaBuilder cb)
-         {
-            return (PAGE) handler.handleCount(query, cb);
-         }
-      }
-
-      final class FirstStrategy<ENTITY, PAGE> implements PaginationStrategy<ENTITY, PAGE>
-      {
-         private static final FirstStrategy<?, ?> INSTANCE = new FirstStrategy<>();
-
          @SuppressWarnings("unchecked")
-         static <E, P> FirstStrategy<E, P> instance()
-         {
-            return (FirstStrategy<E, P>) INSTANCE;
-         }
-
-         @Override
-         public PAGE handle(DatabaseQueryHandler<ENTITY> handler, DatabaseQuery<ENTITY> query,
-               Pagination<ENTITY, PAGE> pagination, CriteriaBuilder cb)
-         {
-            return handler.handleFirst(query, pagination, cb);
-         }
+         PAGE result = (PAGE) handler.handleExist(query, criteriaBuilder);
+         return result;
       }
 
-      final class PagedStrategy<ENTITY, PAGE> implements PaginationStrategy<ENTITY, PAGE>
+      @Override
+      public PAGE visitCount(Pagination<ENTITY, PAGE> pagination, PAGE page)
       {
-         private static final PagedStrategy<?, ?> INSTANCE = new PagedStrategy<>();
-
          @SuppressWarnings("unchecked")
-         static <E, P> PagedStrategy<E, P> instance()
-         {
-            return (PagedStrategy<E, P>) INSTANCE;
-         }
-
-         @Override
-         public PAGE handle(DatabaseQueryHandler<ENTITY> handler, DatabaseQuery<ENTITY> query,
-               Pagination<ENTITY, PAGE> pagination, CriteriaBuilder cb)
-         {
-            return handler.handlePaged(query, pagination, cb);
-         }
+         PAGE result = (PAGE) handler.handleCount(query, criteriaBuilder);
+         return result;
       }
 
-      final class SlicedStrategy<ENTITY, PAGE> implements PaginationStrategy<ENTITY, PAGE>
+      @Override
+      public PAGE visitFirst(Pagination<ENTITY, PAGE> pagination, PAGE page)
       {
-         private static final SlicedStrategy<?, ?> INSTANCE = new SlicedStrategy<>();
-
-         @SuppressWarnings("unchecked")
-         static <E, P> SlicedStrategy<E, P> instance()
-         {
-            return (SlicedStrategy<E, P>) INSTANCE;
-         }
-
-         @Override
-         public PAGE handle(DatabaseQueryHandler<ENTITY> handler, DatabaseQuery<ENTITY> query,
-               Pagination<ENTITY, PAGE> pagination, CriteriaBuilder cb)
-         {
-            return handler.handleSlice(query, pagination, cb);
-         }
+         return handler.handleFirst(query, pagination, criteriaBuilder);
       }
 
-      final class DefaultStrategy<ENTITY, PAGE> implements PaginationStrategy<ENTITY, PAGE>
+      @Override
+      public PAGE visitPaged(Pagination<ENTITY, PAGE> pagination, PAGE page)
       {
-         private static final DefaultStrategy<?, ?> INSTANCE = new DefaultStrategy<>();
-
          @SuppressWarnings("unchecked")
-         static <E, P> DefaultStrategy<E, P> instance()
-         {
-            return (DefaultStrategy<E, P>) INSTANCE;
-         }
+         PAGE result =
+               (PAGE) handler.handlePaged(query, (Pagination<ENTITY, PagedResult<ENTITY>>) pagination, criteriaBuilder);
+         return result;
+      }
 
-         @Override
-         public PAGE handle(DatabaseQueryHandler<ENTITY> handler, DatabaseQuery<ENTITY> query,
-               Pagination<ENTITY, PAGE> pagination, CriteriaBuilder cb)
-         {
-            return handler.handleDefault(query, pagination, cb);
-         }
+      @Override
+      public PAGE visitSliced(Pagination<ENTITY, PAGE> pagination, PAGE page)
+      {
+         @SuppressWarnings("unchecked")
+         PAGE result =
+               (PAGE) handler.handleSlice(query, (Pagination<ENTITY, SliceResult<ENTITY>>) pagination, criteriaBuilder);
+         return result;
       }
    }
 }

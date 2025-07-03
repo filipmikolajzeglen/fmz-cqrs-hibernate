@@ -2,6 +2,7 @@ package com.filipmikolajzeglen.cqrs.persistence.database
 
 import com.filipmikolajzeglen.cqrs.core.Pagination
 import com.filipmikolajzeglen.cqrs.core.PaginationType
+import com.filipmikolajzeglen.cqrs.core.PaginationVisitor
 import com.filipmikolajzeglen.cqrs.persistence.DBSpecification
 
 class DatabaseQuerySpec extends DBSpecification {
@@ -284,21 +285,6 @@ class DatabaseQuerySpec extends DBSpecification {
       query.restrictions.size() == 1
    }
 
-   def "should use custom pagination and set offset and limit on query"() {
-      given:
-      def query = DatabaseQuery.builder(DummyDatabaseEntity)
-            .property(DummyDatabaseEntity::getName).equalTo('John')
-            .build()
-      def pagination = new CustomPagination(2, 2)
-
-      when:
-      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, pagination)
-
-      then:
-      result == null
-   }
-
    def "should not add restriction for null or empty values with optionally()"() {
       given:
       def query = DatabaseQuery.builder(DummyDatabaseEntity)
@@ -401,6 +387,21 @@ class DatabaseQuerySpec extends DBSpecification {
       result.size() == 17
    }
 
+   def "should use custom pagination and set offset and limit on query"() {
+      given:
+      def query = DatabaseQuery.builder(DummyDatabaseEntity)
+            .property(DummyDatabaseEntity::getName).equalTo('John')
+            .build()
+      def pagination = new CustomPagination(2, 2)
+
+      when:
+      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
+            .handle(query, pagination)
+
+      then:
+      result == null
+   }
+
    private static class CustomPagination implements Pagination<DummyDatabaseEntity, List<DummyDatabaseEntity>> {
       private final int offset
       private final int limit
@@ -438,6 +439,11 @@ class DatabaseQuerySpec extends DBSpecification {
       @Override
       int getLimit() {
          return limit
+      }
+
+      @Override
+      <R> R accept(PaginationVisitor<DummyDatabaseEntity, List<DummyDatabaseEntity>, R> visitor, List<DummyDatabaseEntity> dummyDatabaseEntities) {
+         return null
       }
    }
 }
