@@ -3,6 +3,8 @@
       version="3.0">
    <persistence-unit name="test-persistence-unit" transaction-type="RESOURCE_LOCAL">
       <class>com.filipmikolajzeglen.cqrs.persistence.database.DummyDatabaseEntity</class>
+      <class>com.filipmikolajzeglen.cqrs.persistence.database.SuperEntity</class>
+      <class>com.filipmikolajzeglen.cqrs.persistence.database.NestedSuperEntity</class>
       <properties>
          <!-- properties will be overridden in code -->
       </properties>

@@ -1,7 +1,9 @@
 package com.filipmikolajzeglen.cqrs.persistence.database;
 
 import java.beans.Introspector;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiFunction;
@@ -18,12 +20,32 @@ import org.perfectable.introspection.FunctionalReference;
  * @param <ENTITY>   the entity type
  * @param <PROPERTY> the property type
  */
-public class PropertyBuilder<ENTITY, PROPERTY>
+class PropertyBuilder<ENTITY, PROPERTY>
 {
+   /**
+    * The parent query builder.
+    */
    private final DatabaseQuery.Builder<ENTITY> parent;
+
+   /**
+    * Strategy for resolving the initial property path.
+    */
    private final AccessorStrategy<ENTITY> accessorStrategy;
+
+   /**
+    * Strategy for negating restrictions.
+    */
    private final NegationStrategy negationStrategy;
+
+   /**
+    * Strategy for handling optional restrictions.
+    */
    private final OptionalityStrategy optionality;
+
+   /**
+    * List of strategies for resolving nested property paths (for then() chaining).
+    */
+   private final List<PathStepStrategy> pathStepStrategies;
 
    /**
     * Creates a property builder for a given property accessor.
@@ -33,7 +55,8 @@ public class PropertyBuilder<ENTITY, PROPERTY>
     */
    public PropertyBuilder(DatabaseQuery.Builder<ENTITY> parent, Getter<ENTITY, PROPERTY> accessor)
    {
-      this(parent, AccessorStrategy.byGetter(accessor), NegationStrategy.INITIAL, OptionalityStrategy.ALWAYS);
+      this(parent, AccessorStrategy.byGetter(accessor), NegationStrategy.INITIAL, OptionalityStrategy.ALWAYS,
+            List.of(PathStepStrategy.getter(accessor)));
    }
 
    /**
@@ -44,16 +67,31 @@ public class PropertyBuilder<ENTITY, PROPERTY>
     */
    public PropertyBuilder(DatabaseQuery.Builder<ENTITY> parent, String rawAccessor)
    {
-      this(parent, AccessorStrategy.byName(rawAccessor), NegationStrategy.INITIAL, OptionalityStrategy.ALWAYS);
+      this(parent, AccessorStrategy.byName(rawAccessor), NegationStrategy.INITIAL, OptionalityStrategy.ALWAYS,
+            List.of(PathStepStrategy.name(rawAccessor)));
    }
 
+   /**
+    * Internal constructor for advanced usage.
+    */
    private PropertyBuilder(DatabaseQuery.Builder<ENTITY> parent,
          AccessorStrategy<ENTITY> accessorStrategy, NegationStrategy negationStrategy, OptionalityStrategy optionality)
+   {
+      this(parent, accessorStrategy, negationStrategy, optionality, new ArrayList<>());
+   }
+
+   /**
+    * Internal constructor for advanced usage with path steps.
+    */
+   private PropertyBuilder(DatabaseQuery.Builder<ENTITY> parent,
+         AccessorStrategy<ENTITY> accessorStrategy, NegationStrategy negationStrategy, OptionalityStrategy optionality,
+         List<PathStepStrategy> pathStepStrategies)
    {
       this.parent = parent;
       this.accessorStrategy = accessorStrategy;
       this.negationStrategy = negationStrategy;
       this.optionality = optionality;
+      this.pathStepStrategies = pathStepStrategies;
    }
 
    /**
@@ -89,7 +127,7 @@ public class PropertyBuilder<ENTITY, PROPERTY>
          return parent;
       }
       return addRestriction((criteriaBuilder, root) -> {
-         Path<?> path = accessorStrategy.resolve(root);
+         Path<?> path = resolvePath(root);
          return criteriaBuilder.equal(path, property);
       });
    }
@@ -108,7 +146,7 @@ public class PropertyBuilder<ENTITY, PROPERTY>
          return parent;
       }
       return addRestriction((criteriaBuilder, root) -> {
-         Path<?> path = accessorStrategy.resolve(root);
+         Path<?> path = resolvePath(root);
          return criteriaBuilder.equal(path, propertyOpt.get());
       });
    }
@@ -121,7 +159,7 @@ public class PropertyBuilder<ENTITY, PROPERTY>
    public DatabaseQuery.Builder<ENTITY> isNull()
    {
       return addRestriction((criteriaBuilder, root) -> {
-         Path<?> path = accessorStrategy.resolve(root);
+         Path<?> path = resolvePath(root);
          return criteriaBuilder.isNull(path);
       });
    }
@@ -134,7 +172,7 @@ public class PropertyBuilder<ENTITY, PROPERTY>
    public DatabaseQuery.Builder<ENTITY> isNotNull()
    {
       return addRestriction((criteriaBuilder, root) -> {
-         Path<?> path = accessorStrategy.resolve(root);
+         Path<?> path = resolvePath(root);
          return criteriaBuilder.isNotNull(path);
       });
    }
@@ -185,7 +223,7 @@ public class PropertyBuilder<ENTITY, PROPERTY>
    private DatabaseQuery.Builder<ENTITY> getEntityBuilder(Collection<PROPERTY> properties)
    {
       return addRestriction((criteriaBuilder, root) -> {
-         Path<?> path = accessorStrategy.resolve(root);
+         Path<?> path = resolvePath(root);
          Collection<PROPERTY> filtered = properties.stream()
                .filter(Objects::nonNull)
                .toList();
@@ -267,16 +305,31 @@ public class PropertyBuilder<ENTITY, PROPERTY>
        */
       Path<?> resolve(Root<ENTITY> root);
 
+      /**
+       * Creates an accessor strategy using a property getter.
+       *
+       * @param getter the property getter
+       * @return the accessor strategy
+       */
       static <ENTITY, PROPERTY> AccessorStrategy<ENTITY> byGetter(PropertyBuilder.Getter<ENTITY, PROPERTY> getter)
       {
          return new GetterAccessor<>(getter);
       }
 
+      /**
+       * Creates an accessor strategy using a property name.
+       *
+       * @param propertyName the property name
+       * @return the accessor strategy
+       */
       static <ENTITY> AccessorStrategy<ENTITY> byName(String propertyName)
       {
          return new RawAccessor<>(propertyName);
       }
 
+      /**
+       * Accessor strategy using a property getter.
+       */
       final class GetterAccessor<ENTITY, PROPERTY> implements AccessorStrategy<ENTITY>
       {
          private final PropertyBuilder.Getter<ENTITY, PROPERTY> getter;
@@ -301,6 +354,9 @@ public class PropertyBuilder<ENTITY, PROPERTY>
          }
       }
 
+      /**
+       * Accessor strategy using a property name.
+       */
       final class RawAccessor<ENTITY> implements AccessorStrategy<ENTITY>
       {
          private final String path;
@@ -323,6 +379,9 @@ public class PropertyBuilder<ENTITY, PROPERTY>
     */
    sealed interface NegationStrategy
    {
+      /**
+       * The initial (non-negated) strategy.
+       */
       NegationStrategy INITIAL = ForwardStrategy.INSTANCE;
 
       /**
@@ -341,6 +400,9 @@ public class PropertyBuilder<ENTITY, PROPERTY>
        */
       NegationStrategy negate();
 
+      /**
+       * Negated strategy implementation.
+       */
       final class NegatedStrategy implements NegationStrategy
       {
          static final NegationStrategy INSTANCE = new NegatedStrategy();
@@ -359,6 +421,9 @@ public class PropertyBuilder<ENTITY, PROPERTY>
          }
       }
 
+      /**
+       * Forward (non-negated) strategy implementation.
+       */
       final class ForwardStrategy implements NegationStrategy
       {
          static final NegationStrategy INSTANCE = new ForwardStrategy();
@@ -414,5 +479,123 @@ public class PropertyBuilder<ENTITY, PROPERTY>
          }
       }
    }
-}
 
+   /**
+    * Adds a nested property step using a getter reference.
+    *
+    * @param getter the getter for the next property in the path
+    * @return a new property builder for the nested property
+    */
+   public <NEXT> PropertyBuilder<ENTITY, NEXT> then(Getter<PROPERTY, NEXT> getter)
+   {
+      List<PathStepStrategy> newSteps = new ArrayList<>(this.pathStepStrategies);
+      newSteps.add(PathStepStrategy.getter(getter));
+      return new PropertyBuilder<>(parent, accessorStrategy, negationStrategy, optionality, newSteps);
+   }
+
+   /**
+    * Adds a nested property step using a property name.
+    *
+    * @param propertyName the name of the next property in the path
+    * @return a new property builder for the nested property
+    */
+   public PropertyBuilder<ENTITY, Object> then(String propertyName)
+   {
+      List<PathStepStrategy> newSteps = new ArrayList<>(this.pathStepStrategies);
+      newSteps.add(PathStepStrategy.name(propertyName));
+      return new PropertyBuilder<>(parent, accessorStrategy, negationStrategy, optionality, newSteps);
+   }
+
+   /**
+    * Resolves the full property path, including all nested steps.
+    *
+    * @param root the root entity
+    * @return the resolved property path
+    */
+   private Path<?> resolvePath(Root<ENTITY> root)
+   {
+      Path<?> path = accessorStrategy.resolve(root);
+      if (!pathStepStrategies.isEmpty())
+      {
+         for (int i = 1; i < pathStepStrategies.size(); i++)
+         {
+            path = pathStepStrategies.get(i).apply(path);
+         }
+      }
+      return path;
+   }
+
+   /**
+    * Strategy for resolving a step in a nested property path.
+    */
+   private sealed interface PathStepStrategy
+   {
+      /**
+       * Applies this step to the given path.
+       *
+       * @param from the current path
+       * @return the next path
+       */
+      Path<?> apply(Path<?> from);
+
+      /**
+       * Creates a step using a getter reference.
+       *
+       * @param getter the getter
+       * @return the path step strategy
+       */
+      static PathStepStrategy getter(Getter<?, ?> getter) {
+         return new GetterPathStepStrategy(getter);
+      }
+
+      /**
+       * Creates a step using a property name.
+       *
+       * @param propertyName the property name
+       * @return the path step strategy
+       */
+      static PathStepStrategy name(String propertyName) {
+         return new NamePathStepStrategy(propertyName);
+      }
+
+      final class GetterPathStepStrategy implements PathStepStrategy
+      {
+         private final Getter<?, ?> getter;
+
+         GetterPathStepStrategy(Getter<?, ?> getter)
+         {
+            this.getter = getter;
+         }
+
+         @Override
+         public Path<?> apply(Path<?> from)
+         {
+            String propertyName = propertyNameFrom(getter);
+            return from.get(propertyName);
+         }
+
+         private String propertyNameFrom(Getter<?, ?> getter)
+         {
+            FunctionalReference.Introspection introspection = getter.introspect();
+            String methodName = introspection.referencedMethod().getName();
+            return Introspector.decapitalize(methodName.replaceFirst("^(get|is)", ""));
+         }
+      }
+
+      final class NamePathStepStrategy implements PathStepStrategy
+      {
+         private final String propertyName;
+
+         NamePathStepStrategy(String propertyName)
+         {
+            this.propertyName = propertyName;
+         }
+
+         @Override
+         public Path<?> apply(Path<?> from)
+         {
+            return from.get(propertyName);
+         }
+      }
+   }
+}

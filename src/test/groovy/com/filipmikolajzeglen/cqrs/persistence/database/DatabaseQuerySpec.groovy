@@ -492,6 +492,254 @@ class DatabaseQuerySpec extends DBSpecification {
       slicedDesc.content*.id == [3L, 5L] // 2500, 2000
    }
 
+   def "should support nested property queries with then()"() {
+      given:
+      def dummy1 = new DummyDatabaseEntity(name: "John", flag: true, number: 1000L)
+      def dummy2 = new DummyDatabaseEntity(name: "Jane", flag: false, number: 2000L)
+      entityManager.persist(dummy1)
+      entityManager.persist(dummy2)
+      entityManager.flush()
+
+      def superEntity1 = new SuperEntity(dummyDatabaseEntity: dummy1)
+      def superEntity2 = new SuperEntity(dummyDatabaseEntity: dummy2)
+      entityManager.persist(superEntity1)
+      entityManager.persist(superEntity2)
+      entityManager.flush()
+
+      def nested1 = new NestedSuperEntity(superEntity: superEntity1)
+      def nested2 = new NestedSuperEntity(superEntity: superEntity2)
+      entityManager.persist(nested1)
+      entityManager.persist(nested2)
+      entityManager.flush()
+
+      when: "Query by nested property using then()"
+      def query = DatabaseQuery.builder(NestedSuperEntity)
+            .property(NestedSuperEntity::getSuperEntity)
+            .then(SuperEntity::getDummyDatabaseEntity)
+            .then(DummyDatabaseEntity::getId)
+            .equalTo(dummy1.id)
+            .build()
+      def result = new DatabaseQueryHandler<NestedSuperEntity>(entityManager)
+            .handle(query, Pagination.all())
+
+      then:
+      result.size() == 1
+      result[0].id == nested1.id
+      result[0].superEntity.dummyDatabaseEntity.id == dummy1.id
+
+      when: "Query by nested property using then() and in()"
+      def query2 = DatabaseQuery.builder(NestedSuperEntity)
+            .property(NestedSuperEntity::getSuperEntity)
+            .then(SuperEntity::getDummyDatabaseEntity)
+            .then(DummyDatabaseEntity::getId)
+            .in([dummy1.id, dummy2.id])
+            .build()
+      def result2 = new DatabaseQueryHandler<NestedSuperEntity>(entityManager)
+            .handle(query2, Pagination.all())
+
+      then:
+      result2.size() == 2
+      result2*.id.sort() == [nested1.id, nested2.id].sort()
+
+      when: "Query by nested property using then() and optionally()"
+      def query3 = DatabaseQuery.builder(NestedSuperEntity)
+            .property(NestedSuperEntity::getSuperEntity)
+            .then(SuperEntity::getDummyDatabaseEntity)
+            .then(DummyDatabaseEntity::getId)
+            .optionally().equalTo(null)
+            .build()
+      def result3 = new DatabaseQueryHandler<NestedSuperEntity>(entityManager)
+            .handle(query3, Pagination.all())
+
+      then:
+      result3.size() == 2
+
+      when: "Query by nested property using then() and equalTo with Optional"
+      def query4 = DatabaseQuery.builder(NestedSuperEntity)
+            .property(NestedSuperEntity::getSuperEntity)
+            .then(SuperEntity::getDummyDatabaseEntity)
+            .then(DummyDatabaseEntity::getId)
+            .equalTo(Optional.of(dummy2.id))
+            .build()
+      def result4 = new DatabaseQueryHandler<NestedSuperEntity>(entityManager)
+            .handle(query4, Pagination.all())
+
+      then:
+      result4.size() == 1
+      result4[0].id == nested2.id
+      result4[0].superEntity.dummyDatabaseEntity.id == dummy2.id
+   }
+
+   def "should filter by nested property using then() and equalTo"() {
+      given:
+      def dummy1 = new DummyDatabaseEntity(name: "John", flag: true, number: 1000L)
+      def dummy2 = new DummyDatabaseEntity(name: "Jane", flag: false, number: 2000L)
+      entityManager.persist(dummy1)
+      entityManager.persist(dummy2)
+      entityManager.flush()
+
+      def superEntity1 = new SuperEntity(dummyDatabaseEntity: dummy1)
+      def superEntity2 = new SuperEntity(dummyDatabaseEntity: dummy2)
+      entityManager.persist(superEntity1)
+      entityManager.persist(superEntity2)
+      entityManager.flush()
+
+      def nested1 = new NestedSuperEntity(superEntity: superEntity1)
+      def nested2 = new NestedSuperEntity(superEntity: superEntity2)
+      entityManager.persist(nested1)
+      entityManager.persist(nested2)
+      entityManager.flush()
+
+      when:
+      def query = DatabaseQuery.builder(NestedSuperEntity)
+            .property(NestedSuperEntity::getSuperEntity)
+            .then(SuperEntity::getDummyDatabaseEntity)
+            .then(DummyDatabaseEntity::getId)
+            .equalTo(dummy1.id)
+            .build()
+      def result = new DatabaseQueryHandler<NestedSuperEntity>(entityManager)
+            .handle(query, Pagination.all())
+
+      then:
+      result.size() == 1
+      result[0].id == nested1.id
+      result[0].superEntity.dummyDatabaseEntity.id == dummy1.id
+   }
+
+   def "should filter by nested property using then() and in()"() {
+      given:
+      def dummy1 = new DummyDatabaseEntity(name: "John", flag: true, number: 1000L)
+      def dummy2 = new DummyDatabaseEntity(name: "Jane", flag: false, number: 2000L)
+      entityManager.persist(dummy1)
+      entityManager.persist(dummy2)
+      entityManager.flush()
+
+      def superEntity1 = new SuperEntity(dummyDatabaseEntity: dummy1)
+      def superEntity2 = new SuperEntity(dummyDatabaseEntity: dummy2)
+      entityManager.persist(superEntity1)
+      entityManager.persist(superEntity2)
+      entityManager.flush()
+
+      def nested1 = new NestedSuperEntity(superEntity: superEntity1)
+      def nested2 = new NestedSuperEntity(superEntity: superEntity2)
+      entityManager.persist(nested1)
+      entityManager.persist(nested2)
+      entityManager.flush()
+
+      when:
+      def query2 = DatabaseQuery.builder(NestedSuperEntity)
+            .property(NestedSuperEntity::getSuperEntity)
+            .then(SuperEntity::getDummyDatabaseEntity)
+            .then(DummyDatabaseEntity::getId)
+            .in([dummy1.id, dummy2.id])
+            .build()
+      def result2 = new DatabaseQueryHandler<NestedSuperEntity>(entityManager)
+            .handle(query2, Pagination.all())
+
+      then:
+      result2.size() == 2
+      result2*.id.sort() == [nested1.id, nested2.id].sort()
+   }
+
+   def "should filter by nested property using then() and optionally().equalTo(null)"() {
+      given:
+      def dummy1 = new DummyDatabaseEntity(name: "John", flag: true, number: 1000L)
+      def dummy2 = new DummyDatabaseEntity(name: "Jane", flag: false, number: 2000L)
+      entityManager.persist(dummy1)
+      entityManager.persist(dummy2)
+      entityManager.flush()
+
+      def superEntity1 = new SuperEntity(dummyDatabaseEntity: dummy1)
+      def superEntity2 = new SuperEntity(dummyDatabaseEntity: dummy2)
+      entityManager.persist(superEntity1)
+      entityManager.persist(superEntity2)
+      entityManager.flush()
+
+      def nested1 = new NestedSuperEntity(superEntity: superEntity1)
+      def nested2 = new NestedSuperEntity(superEntity: superEntity2)
+      entityManager.persist(nested1)
+      entityManager.persist(nested2)
+      entityManager.flush()
+
+      when:
+      def query3 = DatabaseQuery.builder(NestedSuperEntity)
+            .property(NestedSuperEntity::getSuperEntity)
+            .then(SuperEntity::getDummyDatabaseEntity)
+            .then(DummyDatabaseEntity::getId)
+            .optionally().equalTo(null)
+            .build()
+      def result3 = new DatabaseQueryHandler<NestedSuperEntity>(entityManager)
+            .handle(query3, Pagination.all())
+
+      then:
+      result3.size() == 2
+   }
+
+   def "should filter by nested property using then() and equalTo with Optional"() {
+      given:
+      def dummy1 = new DummyDatabaseEntity(name: "John", flag: true, number: 1000L)
+      def dummy2 = new DummyDatabaseEntity(name: "Jane", flag: false, number: 2000L)
+      entityManager.persist(dummy1)
+      entityManager.persist(dummy2)
+      entityManager.flush()
+
+      def superEntity1 = new SuperEntity(dummyDatabaseEntity: dummy1)
+      def superEntity2 = new SuperEntity(dummyDatabaseEntity: dummy2)
+      entityManager.persist(superEntity1)
+      entityManager.persist(superEntity2)
+      entityManager.flush()
+
+      def nested1 = new NestedSuperEntity(superEntity: superEntity1)
+      def nested2 = new NestedSuperEntity(superEntity: superEntity2)
+      entityManager.persist(nested1)
+      entityManager.persist(nested2)
+      entityManager.flush()
+
+      when:
+      def query4 = DatabaseQuery.builder(NestedSuperEntity)
+            .property(NestedSuperEntity::getSuperEntity)
+            .then(SuperEntity::getDummyDatabaseEntity)
+            .then(DummyDatabaseEntity::getId)
+            .equalTo(Optional.of(dummy2.id))
+            .build()
+      def result4 = new DatabaseQueryHandler<NestedSuperEntity>(entityManager)
+            .handle(query4, Pagination.all())
+
+      then:
+      result4.size() == 1
+      result4[0].id == nested2.id
+      result4[0].superEntity.dummyDatabaseEntity.id == dummy2.id
+   }
+
+   def "should filter by single then() (one level deep)"() {
+      given:
+      def dummy1 = new DummyDatabaseEntity(name: "John", flag: true, number: 1000L)
+      def dummy2 = new DummyDatabaseEntity(name: "Jane", flag: false, number: 2000L)
+      entityManager.persist(dummy1)
+      entityManager.persist(dummy2)
+      entityManager.flush()
+
+      def superEntity1 = new SuperEntity(dummyDatabaseEntity: dummy1)
+      def superEntity2 = new SuperEntity(dummyDatabaseEntity: dummy2)
+      entityManager.persist(superEntity1)
+      entityManager.persist(superEntity2)
+      entityManager.flush()
+
+      when:
+      def query = DatabaseQuery.builder(SuperEntity)
+            .property(SuperEntity::getDummyDatabaseEntity)
+            .then(DummyDatabaseEntity::getId)
+            .in([dummy1.id, dummy2.id])
+            .build()
+      def result = new DatabaseQueryHandler<SuperEntity>(entityManager)
+            .handle(query, Pagination.all())
+
+      then:
+      result.size() == 2
+      result*.id.sort() == [superEntity1.id, superEntity2.id].sort()
+      result*.dummyDatabaseEntity.id.sort() == [dummy1.id, dummy2.id].sort()
+   }
+
    private static class CustomPagination implements Pagination<DummyDatabaseEntity, List<DummyDatabaseEntity>> {
       private final int offset
       private final int limit

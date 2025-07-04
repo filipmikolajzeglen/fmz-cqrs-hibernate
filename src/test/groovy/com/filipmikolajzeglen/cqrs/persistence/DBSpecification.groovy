@@ -42,7 +42,9 @@ class DBSpecification extends Specification {
             "jakarta.persistence.jdbc.password": container.password,
             "jakarta.persistence.jdbc.driver"  : "org.postgresql.Driver",
             "hibernate.hbm2ddl.auto"           : "none",
-            "hibernate.dialect"                : "org.hibernate.dialect.PostgreSQLDialect"
+            "hibernate.dialect"                : "org.hibernate.dialect.PostgreSQLDialect",
+            // Dodaj skanowanie encji z katalogu testowego
+            "hibernate.archive.autodetection"  : "class"
       ]
       entityManagerFactory = Persistence.createEntityManagerFactory("test-persistence-unit", props)
       entityManager = entityManagerFactory.createEntityManager()
@@ -69,6 +71,16 @@ class DBSpecification extends Specification {
                name   VARCHAR(255) NOT NULL,
                flag   BOOLEAN      NOT NULL,
                number BIGINT
+            );
+            CREATE SEQUENCE IF NOT EXISTS fmzcqrspersistence.super_entity_seq START WITH 1 INCREMENT BY 1;
+            CREATE TABLE IF NOT EXISTS fmzcqrspersistence.super_entity (
+               id     BIGINT PRIMARY KEY DEFAULT NEXTVAL('fmzcqrspersistence.super_entity_seq'),
+               dummy_database_entity_id BIGINT REFERENCES fmzcqrspersistence.dummy_database_entity(id)
+            );
+            CREATE SEQUENCE IF NOT EXISTS fmzcqrspersistence.nested_super_entity_seq START WITH 1 INCREMENT BY 1;
+            CREATE TABLE IF NOT EXISTS fmzcqrspersistence.nested_super_entity (
+               id     BIGINT PRIMARY KEY DEFAULT NEXTVAL('fmzcqrspersistence.nested_super_entity_seq'),
+               super_entity_id BIGINT REFERENCES fmzcqrspersistence.super_entity(id)
             );
         """)
 

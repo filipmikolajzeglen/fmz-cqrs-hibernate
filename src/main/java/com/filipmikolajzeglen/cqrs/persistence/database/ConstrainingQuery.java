@@ -9,7 +9,7 @@ import jakarta.persistence.criteria.Root;
  *
  * @param <ENTITY> the entity type
  */
-public interface ConstrainingQuery<ENTITY>
+interface ConstrainingQuery<ENTITY>
 {
    /**
     * Converts the query constraints to an array of JPA {@link Predicate} objects.

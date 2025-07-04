@@ -30,7 +30,7 @@ import lombok.RequiredArgsConstructor;
  * @param <ENTITY> the entity type
  */
 @RequiredArgsConstructor
-public class DatabaseQueryHandler<ENTITY> implements QueryHandler<DatabaseQuery<ENTITY>, ENTITY>
+class DatabaseQueryHandler<ENTITY> implements QueryHandler<DatabaseQuery<ENTITY>, ENTITY>
 {
    private final EntityManager entityManager;
 

@@ -9,7 +9,7 @@ import jakarta.persistence.criteria.Root;
  *
  * @param <ENTITY> the entity type
  */
-public interface Restriction<ENTITY>
+interface Restriction<ENTITY>
 {
    /**
     * Converts this restriction to a JPA predicate.
