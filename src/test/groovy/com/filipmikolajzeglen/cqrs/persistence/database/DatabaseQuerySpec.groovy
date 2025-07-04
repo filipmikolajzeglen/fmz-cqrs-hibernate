@@ -1,8 +1,8 @@
 package com.filipmikolajzeglen.cqrs.persistence.database
 
-import com.filipmikolajzeglen.cqrs.core.Pagination
-import com.filipmikolajzeglen.cqrs.core.PaginationType
-import com.filipmikolajzeglen.cqrs.core.PaginationVisitor
+import com.filipmikolajzeglen.cqrs.core.ResultStrategy
+import com.filipmikolajzeglen.cqrs.core.ResultStrategyType
+import com.filipmikolajzeglen.cqrs.core.ResultStrategyVisitor
 import com.filipmikolajzeglen.cqrs.persistence.DBSpecification
 
 class DatabaseQuerySpec extends DBSpecification {
@@ -17,7 +17,7 @@ class DatabaseQuerySpec extends DBSpecification {
    def 'should fetch entities using #testCase propertyAccessor and methods: equalTo(), in(), isNotNull()'(
          String testCase, DatabaseQuery query) {
       when:
-      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager).handle(query, Pagination.all())
+      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager).handle(query, ResultStrategy.all())
 
       then:
       result.size() == 3
@@ -61,7 +61,7 @@ class DatabaseQuerySpec extends DBSpecification {
             .property(DummyDatabaseEntity::getId).in([1L, 2L, 3L, 5L, 6L, 7L, 9L])
             .property(DummyDatabaseEntity::getNumber).isNull()
             .build()
-      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager).handle(query, Pagination.all())
+      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager).handle(query, ResultStrategy.all())
 
       then:
       result.size() == 2
@@ -87,13 +87,13 @@ class DatabaseQuerySpec extends DBSpecification {
 
       when:
       def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.all())
+            .handle(query, ResultStrategy.all())
 
       then:
       result.any { it.name == null } || result.any { it.name == 'John' }
    }
 
-   def 'should fetch single entity using Pagination.single()'() {
+   def 'should fetch single entity using ResultStrategy.single()'() {
       given:
       def entityId = 1L
       def query = DatabaseQuery.builder(DummyDatabaseEntity)
@@ -101,7 +101,7 @@ class DatabaseQuerySpec extends DBSpecification {
             .build()
 
       when:
-      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager).handle(query, Pagination.single())
+      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager).handle(query, ResultStrategy.single())
 
       then:
       with(result) {
@@ -112,7 +112,7 @@ class DatabaseQuerySpec extends DBSpecification {
       }
    }
 
-   def 'should fetch single entity using Pagination.optional()'() {
+   def 'should fetch single entity using ResultStrategy.optional()'() {
       given:
       def entityId = 1L
       def query = DatabaseQuery.builder(DummyDatabaseEntity)
@@ -120,7 +120,7 @@ class DatabaseQuerySpec extends DBSpecification {
             .build()
 
       when:
-      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager).handle(query, Pagination.optional())
+      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager).handle(query, ResultStrategy.optional())
 
       then:
       with(result.get()) {
@@ -131,7 +131,7 @@ class DatabaseQuerySpec extends DBSpecification {
       }
    }
 
-   def 'should fetch paged result using Pagination.paged() for page=#page, size=#size, totalCount=#totalCount'() {
+   def 'should fetch paged result using ResultStrategy.paged() for page=#page, size=#size, totalCount=#totalCount'() {
       given:
       def query = DatabaseQuery.builder(DummyDatabaseEntity)
             .property(DummyDatabaseEntity::getName).equalTo('John')
@@ -140,7 +140,7 @@ class DatabaseQuerySpec extends DBSpecification {
 
       when:
       def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.paged(page, size, totalCount))
+            .handle(query, ResultStrategy.paged(page, size, totalCount))
 
       then:
       with(result) {
@@ -163,7 +163,7 @@ class DatabaseQuerySpec extends DBSpecification {
       3    | 1    | 3          || []           | 0            | 3
    }
 
-   def 'should fetch sliced result using Pagination.sliced() for offset=#offset, limit=#limit'() {
+   def 'should fetch sliced result using ResultStrategy.sliced() for offset=#offset, limit=#limit'() {
       given:
       def query = DatabaseQuery.builder(DummyDatabaseEntity)
             .property(DummyDatabaseEntity::getName).equalTo('John')
@@ -172,7 +172,7 @@ class DatabaseQuerySpec extends DBSpecification {
 
       when:
       def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.sliced(offset, limit))
+            .handle(query, ResultStrategy.sliced(offset, limit))
 
       then:
       with(result) {
@@ -193,7 +193,7 @@ class DatabaseQuerySpec extends DBSpecification {
       3      | 1     || []           | 0            | false
    }
 
-   def "should check existence using Pagination.exist()"() {
+   def "should check existence using ResultStrategy.exist()"() {
       given:
       def query = DatabaseQuery.builder(DummyDatabaseEntity)
             .property(DummyDatabaseEntity::getName).equalTo('John')
@@ -201,7 +201,7 @@ class DatabaseQuerySpec extends DBSpecification {
 
       when:
       def exists = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.exist())
+            .handle(query, ResultStrategy.exist())
 
       then:
       exists == true
@@ -210,13 +210,13 @@ class DatabaseQuerySpec extends DBSpecification {
       def notExists = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
             .handle(DatabaseQuery.builder(DummyDatabaseEntity)
                   .property(DummyDatabaseEntity::getName).equalTo('NotExistingName')
-                  .build(), Pagination.exist())
+                  .build(), ResultStrategy.exist())
 
       then:
       notExists == false
    }
 
-   def "should count entities using Pagination.count()"() {
+   def "should count entities using ResultStrategy.count()"() {
       given:
       def query = DatabaseQuery.builder(DummyDatabaseEntity)
             .property(DummyDatabaseEntity::getName).equalTo('John')
@@ -224,7 +224,7 @@ class DatabaseQuerySpec extends DBSpecification {
 
       when:
       def count = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.count())
+            .handle(query, ResultStrategy.count())
 
       then:
       count == 4L
@@ -233,13 +233,13 @@ class DatabaseQuerySpec extends DBSpecification {
       def zeroCount = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
             .handle(DatabaseQuery.builder(DummyDatabaseEntity)
                   .property(DummyDatabaseEntity::getName).equalTo('NotExistingName')
-                  .build(), Pagination.count())
+                  .build(), ResultStrategy.count())
 
       then:
       zeroCount == 0L
    }
 
-   def 'should fetch first entity using Pagination.first()'() {
+   def 'should fetch first entity using ResultStrategy.first()'() {
       given:
       def query = DatabaseQuery.builder(DummyDatabaseEntity)
             .property(DummyDatabaseEntity::getName).equalTo('John')
@@ -247,7 +247,7 @@ class DatabaseQuerySpec extends DBSpecification {
 
       when:
       def first = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.first())
+            .handle(query, ResultStrategy.first())
 
       then:
       first.isPresent()
@@ -257,7 +257,7 @@ class DatabaseQuerySpec extends DBSpecification {
       def none = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
             .handle(DatabaseQuery.builder(DummyDatabaseEntity)
                   .property(DummyDatabaseEntity::getName).equalTo('NotExistingName')
-                  .build(), Pagination.first())
+                  .build(), ResultStrategy.first())
 
       then:
       !none.isPresent()
@@ -294,7 +294,7 @@ class DatabaseQuerySpec extends DBSpecification {
 
       when:
       def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.all())
+            .handle(query, ResultStrategy.all())
 
       then: "No restriction is added, so all entities are returned"
       result.size() == 17
@@ -309,7 +309,7 @@ class DatabaseQuerySpec extends DBSpecification {
 
       when:
       def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.all())
+            .handle(query, ResultStrategy.all())
 
       then: "No restriction is added, so all entities are returned"
       result.size() == 17
@@ -324,7 +324,7 @@ class DatabaseQuerySpec extends DBSpecification {
 
       when:
       def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.all())
+            .handle(query, ResultStrategy.all())
 
       then:
       result*.id.sort() == [1L, 3L, 5L]
@@ -339,7 +339,7 @@ class DatabaseQuerySpec extends DBSpecification {
 
       when:
       def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.all())
+            .handle(query, ResultStrategy.all())
 
       then: "No restriction is added, so all entities are returned"
       result.size() == 17
@@ -353,7 +353,7 @@ class DatabaseQuerySpec extends DBSpecification {
 
       when:
       def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.all())
+            .handle(query, ResultStrategy.all())
 
       then: "No restriction is added, so all entities are returned"
       result.size() == 17
@@ -367,7 +367,7 @@ class DatabaseQuerySpec extends DBSpecification {
 
       when:
       def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.all())
+            .handle(query, ResultStrategy.all())
 
       then: "No restriction is added, so all entities are returned"
       result.size() == 17
@@ -381,28 +381,13 @@ class DatabaseQuerySpec extends DBSpecification {
 
       when:
       def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.all())
+            .handle(query, ResultStrategy.all())
 
       then: "No restriction is added, so all entities are returned"
       result.size() == 17
    }
 
-   def "should use custom pagination and set offset and limit on query"() {
-      given:
-      def query = DatabaseQuery.builder(DummyDatabaseEntity)
-            .property(DummyDatabaseEntity::getName).equalTo('John')
-            .build()
-      def pagination = new CustomPagination(2, 2)
-
-      when:
-      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, pagination)
-
-      then:
-      result == null
-   }
-
-   def "should sort results ascending and descending by property using Pagination.all()"() {
+   def "should sort results ascending and descending by property using ResultStrategy.all()"() {
       given:
       def query = DatabaseQuery.builder(DummyDatabaseEntity)
             .property(DummyDatabaseEntity::getName).equalTo('John')
@@ -411,14 +396,14 @@ class DatabaseQuerySpec extends DBSpecification {
 
       when: "sort ascending"
       def ascResult = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.<DummyDatabaseEntity>all().orderedByAsc("number"))
+            .handle(query, ResultStrategy.<DummyDatabaseEntity>all().orderedByAsc("number"))
 
       then:
       ascResult*.id == [1L, 5L, 3L] // 1000, 2000, 2500
 
       when: "sort descending"
       def descResult = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.<DummyDatabaseEntity>all().orderedByDesc("number"))
+            .handle(query, ResultStrategy.<DummyDatabaseEntity>all().orderedByDesc("number"))
 
       then:
       descResult*.id == [3L, 5L, 1L] // 2500, 2000, 1000
@@ -433,14 +418,14 @@ class DatabaseQuerySpec extends DBSpecification {
 
       when: "paged, ascending"
       def pagedAsc = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.<DummyDatabaseEntity>paged(0, 2, 3).orderedByAsc("number"))
+            .handle(query, ResultStrategy.<DummyDatabaseEntity>paged(0, 2, 3).orderedByAsc("number"))
 
       then:
       pagedAsc.content*.id == [1L, 5L] // 1000, 2000
 
       when: "paged, descending"
       def pagedDesc = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.<DummyDatabaseEntity>paged(0, 2, 3).orderedByDesc("number"))
+            .handle(query, ResultStrategy.<DummyDatabaseEntity>paged(0, 2, 3).orderedByDesc("number"))
 
       then:
       pagedDesc.content*.id == [3L, 5L] // 2500, 2000
@@ -455,7 +440,7 @@ class DatabaseQuerySpec extends DBSpecification {
 
       when: "first ascending"
       def firstAsc = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.<DummyDatabaseEntity>first().orderedByAsc("number"))
+            .handle(query, ResultStrategy.<DummyDatabaseEntity>first().orderedByAsc("number"))
 
       then:
       firstAsc.isPresent()
@@ -463,7 +448,7 @@ class DatabaseQuerySpec extends DBSpecification {
 
       when: "first descending"
       def firstDesc = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.<DummyDatabaseEntity>first().orderedByDesc("number"))
+            .handle(query, ResultStrategy.<DummyDatabaseEntity>first().orderedByDesc("number"))
 
       then:
       firstDesc.isPresent()
@@ -479,14 +464,14 @@ class DatabaseQuerySpec extends DBSpecification {
 
       when: "sliced ascending"
       def slicedAsc = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.<DummyDatabaseEntity>sliced(0, 2).orderedByAsc("number"))
+            .handle(query, ResultStrategy.<DummyDatabaseEntity>sliced(0, 2).orderedByAsc("number"))
 
       then:
       slicedAsc.content*.id == [1L, 5L] // 1000, 2000
 
       when: "sliced descending"
       def slicedDesc = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
-            .handle(query, Pagination.<DummyDatabaseEntity>sliced(0, 2).orderedByDesc("number"))
+            .handle(query, ResultStrategy.<DummyDatabaseEntity>sliced(0, 2).orderedByDesc("number"))
 
       then:
       slicedDesc.content*.id == [3L, 5L] // 2500, 2000
@@ -520,7 +505,7 @@ class DatabaseQuerySpec extends DBSpecification {
             .equalTo(dummy1.id)
             .build()
       def result = new DatabaseQueryHandler<NestedSuperEntity>(entityManager)
-            .handle(query, Pagination.all())
+            .handle(query, ResultStrategy.all())
 
       then:
       result.size() == 1
@@ -535,7 +520,7 @@ class DatabaseQuerySpec extends DBSpecification {
             .in([dummy1.id, dummy2.id])
             .build()
       def result2 = new DatabaseQueryHandler<NestedSuperEntity>(entityManager)
-            .handle(query2, Pagination.all())
+            .handle(query2, ResultStrategy.all())
 
       then:
       result2.size() == 2
@@ -549,7 +534,7 @@ class DatabaseQuerySpec extends DBSpecification {
             .optionally().equalTo(null)
             .build()
       def result3 = new DatabaseQueryHandler<NestedSuperEntity>(entityManager)
-            .handle(query3, Pagination.all())
+            .handle(query3, ResultStrategy.all())
 
       then:
       result3.size() == 2
@@ -562,7 +547,7 @@ class DatabaseQuerySpec extends DBSpecification {
             .equalTo(Optional.of(dummy2.id))
             .build()
       def result4 = new DatabaseQueryHandler<NestedSuperEntity>(entityManager)
-            .handle(query4, Pagination.all())
+            .handle(query4, ResultStrategy.all())
 
       then:
       result4.size() == 1
@@ -598,7 +583,7 @@ class DatabaseQuerySpec extends DBSpecification {
             .equalTo(dummy1.id)
             .build()
       def result = new DatabaseQueryHandler<NestedSuperEntity>(entityManager)
-            .handle(query, Pagination.all())
+            .handle(query, ResultStrategy.all())
 
       then:
       result.size() == 1
@@ -627,124 +612,111 @@ class DatabaseQuerySpec extends DBSpecification {
       entityManager.flush()
 
       when:
-      def query2 = DatabaseQuery.builder(NestedSuperEntity)
+      def query = DatabaseQuery.builder(NestedSuperEntity)
             .property(NestedSuperEntity::getSuperEntity)
             .then(SuperEntity::getDummyDatabaseEntity)
             .then(DummyDatabaseEntity::getId)
             .in([dummy1.id, dummy2.id])
             .build()
-      def result2 = new DatabaseQueryHandler<NestedSuperEntity>(entityManager)
-            .handle(query2, Pagination.all())
-
-      then:
-      result2.size() == 2
-      result2*.id.sort() == [nested1.id, nested2.id].sort()
-   }
-
-   def "should filter by nested property using then() and optionally().equalTo(null)"() {
-      given:
-      def dummy1 = new DummyDatabaseEntity(name: "John", flag: true, number: 1000L)
-      def dummy2 = new DummyDatabaseEntity(name: "Jane", flag: false, number: 2000L)
-      entityManager.persist(dummy1)
-      entityManager.persist(dummy2)
-      entityManager.flush()
-
-      def superEntity1 = new SuperEntity(dummyDatabaseEntity: dummy1)
-      def superEntity2 = new SuperEntity(dummyDatabaseEntity: dummy2)
-      entityManager.persist(superEntity1)
-      entityManager.persist(superEntity2)
-      entityManager.flush()
-
-      def nested1 = new NestedSuperEntity(superEntity: superEntity1)
-      def nested2 = new NestedSuperEntity(superEntity: superEntity2)
-      entityManager.persist(nested1)
-      entityManager.persist(nested2)
-      entityManager.flush()
-
-      when:
-      def query3 = DatabaseQuery.builder(NestedSuperEntity)
-            .property(NestedSuperEntity::getSuperEntity)
-            .then(SuperEntity::getDummyDatabaseEntity)
-            .then(DummyDatabaseEntity::getId)
-            .optionally().equalTo(null)
-            .build()
-      def result3 = new DatabaseQueryHandler<NestedSuperEntity>(entityManager)
-            .handle(query3, Pagination.all())
-
-      then:
-      result3.size() == 2
-   }
-
-   def "should filter by nested property using then() and equalTo with Optional"() {
-      given:
-      def dummy1 = new DummyDatabaseEntity(name: "John", flag: true, number: 1000L)
-      def dummy2 = new DummyDatabaseEntity(name: "Jane", flag: false, number: 2000L)
-      entityManager.persist(dummy1)
-      entityManager.persist(dummy2)
-      entityManager.flush()
-
-      def superEntity1 = new SuperEntity(dummyDatabaseEntity: dummy1)
-      def superEntity2 = new SuperEntity(dummyDatabaseEntity: dummy2)
-      entityManager.persist(superEntity1)
-      entityManager.persist(superEntity2)
-      entityManager.flush()
-
-      def nested1 = new NestedSuperEntity(superEntity: superEntity1)
-      def nested2 = new NestedSuperEntity(superEntity: superEntity2)
-      entityManager.persist(nested1)
-      entityManager.persist(nested2)
-      entityManager.flush()
-
-      when:
-      def query4 = DatabaseQuery.builder(NestedSuperEntity)
-            .property(NestedSuperEntity::getSuperEntity)
-            .then(SuperEntity::getDummyDatabaseEntity)
-            .then(DummyDatabaseEntity::getId)
-            .equalTo(Optional.of(dummy2.id))
-            .build()
-      def result4 = new DatabaseQueryHandler<NestedSuperEntity>(entityManager)
-            .handle(query4, Pagination.all())
-
-      then:
-      result4.size() == 1
-      result4[0].id == nested2.id
-      result4[0].superEntity.dummyDatabaseEntity.id == dummy2.id
-   }
-
-   def "should filter by single then() (one level deep)"() {
-      given:
-      def dummy1 = new DummyDatabaseEntity(name: "John", flag: true, number: 1000L)
-      def dummy2 = new DummyDatabaseEntity(name: "Jane", flag: false, number: 2000L)
-      entityManager.persist(dummy1)
-      entityManager.persist(dummy2)
-      entityManager.flush()
-
-      def superEntity1 = new SuperEntity(dummyDatabaseEntity: dummy1)
-      def superEntity2 = new SuperEntity(dummyDatabaseEntity: dummy2)
-      entityManager.persist(superEntity1)
-      entityManager.persist(superEntity2)
-      entityManager.flush()
-
-      when:
-      def query = DatabaseQuery.builder(SuperEntity)
-            .property(SuperEntity::getDummyDatabaseEntity)
-            .then(DummyDatabaseEntity::getId)
-            .in([dummy1.id, dummy2.id])
-            .build()
-      def result = new DatabaseQueryHandler<SuperEntity>(entityManager)
-            .handle(query, Pagination.all())
+      def result = new DatabaseQueryHandler<NestedSuperEntity>(entityManager)
+            .handle(query, ResultStrategy.all())
 
       then:
       result.size() == 2
-      result*.id.sort() == [superEntity1.id, superEntity2.id].sort()
-      result*.dummyDatabaseEntity.id.sort() == [dummy1.id, dummy2.id].sort()
+      result*.id.sort() == [nested1.id, nested2.id].sort()
    }
 
-   private static class CustomPagination implements Pagination<DummyDatabaseEntity, List<DummyDatabaseEntity>> {
+   def "should filter by nested property using then(String) and equalTo"() {
+      given:
+      def dummy1 = new DummyDatabaseEntity(name: "John", flag: true, number: 1000L)
+      def dummy2 = new DummyDatabaseEntity(name: "Jane", flag: false, number: 2000L)
+      entityManager.persist(dummy1)
+      entityManager.persist(dummy2)
+      entityManager.flush()
+
+      def superEntity1 = new SuperEntity(dummyDatabaseEntity: dummy1)
+      def superEntity2 = new SuperEntity(dummyDatabaseEntity: dummy2)
+      entityManager.persist(superEntity1)
+      entityManager.persist(superEntity2)
+      entityManager.flush()
+
+      def nested1 = new NestedSuperEntity(superEntity: superEntity1)
+      def nested2 = new NestedSuperEntity(superEntity: superEntity2)
+      entityManager.persist(nested1)
+      entityManager.persist(nested2)
+      entityManager.flush()
+
+      when:
+      def query = DatabaseQuery.builder(NestedSuperEntity)
+            .property("superEntity")
+            .then("dummyDatabaseEntity")
+            .then("id")
+            .equalTo(dummy1.id)
+            .build()
+      def result = new DatabaseQueryHandler<NestedSuperEntity>(entityManager)
+            .handle(query, ResultStrategy.all())
+
+      then:
+      result.size() == 1
+      result[0].id == nested1.id
+      result[0].superEntity.dummyDatabaseEntity.id == dummy1.id
+   }
+
+   def "should filter by nested property using then(String) and in()"() {
+      given:
+      def dummy1 = new DummyDatabaseEntity(name: "John", flag: true, number: 1000L)
+      def dummy2 = new DummyDatabaseEntity(name: "Jane", flag: false, number: 2000L)
+      entityManager.persist(dummy1)
+      entityManager.persist(dummy2)
+      entityManager.flush()
+
+      def superEntity1 = new SuperEntity(dummyDatabaseEntity: dummy1)
+      def superEntity2 = new SuperEntity(dummyDatabaseEntity: dummy2)
+      entityManager.persist(superEntity1)
+      entityManager.persist(superEntity2)
+      entityManager.flush()
+
+      def nested1 = new NestedSuperEntity(superEntity: superEntity1)
+      def nested2 = new NestedSuperEntity(superEntity: superEntity2)
+      entityManager.persist(nested1)
+      entityManager.persist(nested2)
+      entityManager.flush()
+
+      when:
+      def query = DatabaseQuery.builder(NestedSuperEntity)
+            .property("superEntity")
+            .then("dummyDatabaseEntity")
+            .then("id")
+            .in([dummy1.id, dummy2.id])
+            .build()
+      def result = new DatabaseQueryHandler<NestedSuperEntity>(entityManager)
+            .handle(query, ResultStrategy.all())
+
+      then:
+      result.size() == 2
+      result*.id.sort() == [nested1.id, nested2.id].sort()
+   }
+
+   def "should use custom pagination and set offset and limit on query"() {
+      given:
+      def query = DatabaseQuery.builder(DummyDatabaseEntity)
+            .property(DummyDatabaseEntity::getName).equalTo('John')
+            .build()
+      def pagination = new CustomResultStrategy(2, 2)
+
+      when:
+      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
+            .handle(query, pagination)
+
+      then:
+      result == null
+   }
+
+   private static class CustomResultStrategy implements ResultStrategy<DummyDatabaseEntity, List<DummyDatabaseEntity>> {
       private final int offset
       private final int limit
 
-      CustomPagination(int offset, int limit) {
+      CustomResultStrategy(int offset, int limit) {
          this.offset = offset
          this.limit = limit
       }
@@ -765,8 +737,8 @@ class DatabaseQuerySpec extends DBSpecification {
       }
 
       @Override
-      PaginationType getType() {
-         return PaginationType.LIST
+      ResultStrategyType getType() {
+         return ResultStrategyType.LIST
       }
 
       @Override
@@ -780,8 +752,61 @@ class DatabaseQuerySpec extends DBSpecification {
       }
 
       @Override
-      <R> R accept(PaginationVisitor<DummyDatabaseEntity, List<DummyDatabaseEntity>, R> visitor, List<DummyDatabaseEntity> dummyDatabaseEntities) {
+      <R> R accept(ResultStrategyVisitor<DummyDatabaseEntity, List<DummyDatabaseEntity>, R> visitor, List<DummyDatabaseEntity> dummyDatabaseEntities) {
+         return visitor.visitList(this, dummyDatabaseEntities)
+      }
+   }
+
+   def "should not set offset and limit if ResultStrategy throws UnsupportedOperationException"() {
+      given:
+      def query = DatabaseQuery.builder(DummyDatabaseEntity)
+            .property(DummyDatabaseEntity::getName).equalTo('John')
+            .build()
+      def strategy = new ThrowsOnOffsetLimitStrategy()
+
+      when:
+      def result = new DatabaseQueryHandler<DummyDatabaseEntity>(entityManager)
+            .handle(query, strategy)
+
+      then:
+      result == ["called"]
+
+   }
+
+   private static class ThrowsOnOffsetLimitStrategy implements ResultStrategy<DummyDatabaseEntity, List<String>> {
+      @Override
+      List<String> expand(List<DummyDatabaseEntity> elements) {
+         return ["called"]
+      }
+
+      @Override
+      List<String> expandSingle(DummyDatabaseEntity element) {
          return null
+      }
+
+      @Override
+      List<String> reduceEmpty() {
+         return null
+      }
+
+      @Override
+      ResultStrategyType getType() {
+         return ResultStrategyType.LIST
+      }
+
+      @Override
+      int getOffset() {
+         throw new UnsupportedOperationException("offset not supported")
+      }
+
+      @Override
+      int getLimit() {
+         throw new UnsupportedOperationException("limit not supported")
+      }
+
+      @Override
+      <R> R accept(ResultStrategyVisitor<DummyDatabaseEntity, List<String>, R> visitor, List<String> dummyDatabaseEntities) {
+         return visitor.visitList(this, dummyDatabaseEntities)
       }
    }
 }

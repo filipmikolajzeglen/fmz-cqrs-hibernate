@@ -72,15 +72,6 @@ public class PropertyBuilder<ENTITY, PROPERTY>
    }
 
    /**
-    * Internal constructor for advanced usage.
-    */
-   private PropertyBuilder(DatabaseQuery.Builder<ENTITY> parent,
-         AccessorStrategy<ENTITY> accessorStrategy, NegationStrategy negationStrategy, OptionalityStrategy optionality)
-   {
-      this(parent, accessorStrategy, negationStrategy, optionality, new ArrayList<>());
-   }
-
-   /**
     * Internal constructor for advanced usage with path steps.
     */
    private PropertyBuilder(DatabaseQuery.Builder<ENTITY> parent,
@@ -101,7 +92,7 @@ public class PropertyBuilder<ENTITY, PROPERTY>
     */
    public PropertyBuilder<ENTITY, PROPERTY> not()
    {
-      return new PropertyBuilder<>(parent, accessorStrategy, negationStrategy.negate(), optionality);
+      return new PropertyBuilder<>(parent, accessorStrategy, negationStrategy.negate(), optionality, pathStepStrategies);
    }
 
    /**
@@ -111,7 +102,7 @@ public class PropertyBuilder<ENTITY, PROPERTY>
     */
    public PropertyBuilder<ENTITY, PROPERTY> optionally()
    {
-      return new PropertyBuilder<>(parent, accessorStrategy, negationStrategy, OptionalityStrategy.OPTIONAL);
+      return new PropertyBuilder<>(parent, accessorStrategy, negationStrategy, OptionalityStrategy.OPTIONAL, pathStepStrategies);
    }
 
    /**

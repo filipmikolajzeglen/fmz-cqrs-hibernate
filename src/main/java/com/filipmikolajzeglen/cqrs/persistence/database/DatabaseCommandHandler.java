@@ -10,7 +10,7 @@ import lombok.RequiredArgsConstructor;
  * @param <ENTITY> the entity type
  */
 @RequiredArgsConstructor
-class DatabaseCommandHandler<ENTITY> implements CommandHandler<DatabaseCommand<ENTITY>, ENTITY>
+public class DatabaseCommandHandler<ENTITY> implements CommandHandler<DatabaseCommand<ENTITY>, ENTITY>
 {
    private final EntityManager entityManager;
 
