@@ -20,7 +20,7 @@ import org.perfectable.introspection.FunctionalReference;
  * @param <ENTITY>   the entity type
  * @param <PROPERTY> the property type
  */
-class PropertyBuilder<ENTITY, PROPERTY>
+public class PropertyBuilder<ENTITY, PROPERTY>
 {
    /**
     * The parent query builder.
