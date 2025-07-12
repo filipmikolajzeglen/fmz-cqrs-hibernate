@@ -19,7 +19,7 @@ Add the dependency to your `pom.xml`:
 <dependency>
   <groupId>com.filipmikolajzeglen.cqrs</groupId>
   <artifactId>fmz-cqrs-persistence</artifactId>
-  <version>2.0.3</version>
+  <version>2.0.4</version>
 </dependency>
 ```
 
@@ -43,7 +43,7 @@ repositories {
     maven {
         url = uri("https://maven.pkg.github.com/filipmikolajzeglen")
         credentials {
-            username = project.findProperty("gpr.user") ?: System.getenv("USERNAME_GITHUB")
+            username = project.findProperty("gpr.secureUser") ?: System.getenv("USERNAME_GITHUB")
             password = project.findProperty("gpr.key") ?: System.getenv("TOKEN_GITHUB")
         }
     }
@@ -146,7 +146,7 @@ private Optional<Collection<Long>> optionalIds = Optional.empty();
 
 This way, you can safely assign values to these fields only when the restriction should be applied, and leave them empty otherwise.
 
-Suppose you want to build a query where some restrictions should only be applied if the value is present (e.g., provided by the user). You can use the `optionally()` modifier to express this intent:
+Suppose you want to build a query where some restrictions should only be applied if the value is present (e.g., provided by the secureUser). You can use the `optionally()` modifier to express this intent:
 
 ```java
 DatabaseQuery<MyEntity> query = DatabaseQuery.<MyEntity>builder(MyEntity.class)
